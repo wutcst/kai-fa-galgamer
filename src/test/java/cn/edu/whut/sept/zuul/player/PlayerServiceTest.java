@@ -19,7 +19,7 @@ class PlayerServiceTest {
         playerService.gainItem("blank_dice");
 
         assertEquals(1, playerService.inventoryItems().size());
-        assertEquals("blank_dice", playerService.inventoryItems().getFirst());
+        assertEquals("blank_dice", playerService.inventoryItems().get(0));
     }
 
     @Test

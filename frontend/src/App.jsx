@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { initGame, loadAssetManifest, performAction, saveGame } from './api'
+import { initGame, loadAssetManifest, performAction, saveGame } from './api/gameApi'
 import GameScreen from './components/GameScreen'
 import './App.css'
 
