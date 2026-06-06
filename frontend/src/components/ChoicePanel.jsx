@@ -1,20 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 const antiCycleItems = ['blank_dice', 'savebreaker_key', 'nameless_badge', 'pure_seed', 'throne_fragment']
 
 function ChoicePanel({ snapshot, assets, loading, onAction }) {
   const choices = snapshot.choices ?? []
   const ending = snapshot.ending
-  const lastChoiceId = choices.length ? choices[choices.length - 1].id : ''
+  const selectableChoices = choices.filter((choice) => choice.unlocked !== false)
+  const lastChoiceId = selectableChoices.length ? selectableChoices[selectableChoices.length - 1].id : ''
   const [selected, setSelected] = useState(lastChoiceId)
+  const activeChoiceId = selectableChoices.some((choice) => choice.id === selected) ? selected : lastChoiceId
   const keyCount = useMemo(
     () => antiCycleItems.filter((itemId) => snapshot.inventoryItems?.includes(itemId)).length,
     [snapshot.inventoryItems],
   )
-
-  useEffect(() => {
-    setSelected(lastChoiceId)
-  }, [lastChoiceId])
 
   if (ending) {
     const endingArt = assets[ending.assetKey] ?? assets['ending.write_own_chapter'] ?? assets.fallback
@@ -47,7 +45,7 @@ function ChoicePanel({ snapshot, assets, loading, onAction }) {
           <button
             key={choice.id}
             type="button"
-            className={selected === choice.id ? 'is-selected' : ''}
+            className={activeChoiceId === choice.id ? 'is-selected' : ''}
             disabled={loading || choice.unlocked === false}
             onClick={() => setSelected(choice.id)}
           >
@@ -60,12 +58,12 @@ function ChoicePanel({ snapshot, assets, loading, onAction }) {
       <button
         className="choice-confirm"
         type="button"
-        disabled={loading || !selected}
+        disabled={loading || !activeChoiceId}
         onClick={() =>
           onAction({
             actionType: 'CHOOSE_ENDING',
-            target: selected,
-            value: selected,
+            target: activeChoiceId,
+            value: activeChoiceId,
           })
         }
       >

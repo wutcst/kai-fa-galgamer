@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react'
-
 const battleActions = [
   { id: 'attack', label: '攻击', mark: '⚔' },
   { id: 'defend', label: '防御', mark: '◆' },
@@ -8,26 +6,19 @@ const battleActions = [
 ]
 
 function BattlePanel({ battle, assets, loading, playerHp, onAction }) {
-  const [effect, setEffect] = useState('')
   const enemyHp = battle.enemyHp ?? battle.enemyHealth ?? 0
   const enemyMaxHp = battle.enemyMaxHp ?? battle.enemyMaxHealth ?? 1
   const hpRatio = Math.max(0, Math.min(1, enemyHp / enemyMaxHp))
   const playerRatio = Math.max(0, Math.min(1, (playerHp ?? 0) / 100))
   const phase = battle.phase ?? 1
   const bossArt = assets[battle.assetKey ?? 'character.zuul_overlord'] ?? assets.fallback
-
-  useEffect(() => {
-    if (!battle.lastAction) {
-      return undefined
-    }
-    const nextEffect = battle.lastAction === 'use_soul_bell' ? 'bell' : battle.lastAction
-    setEffect(nextEffect)
-    const timer = window.setTimeout(() => setEffect(''), 520)
-    return () => window.clearTimeout(timer)
-  }, [battle.enemyHp, battle.lastAction, battle.phase, battle.turn])
+  const effect = battle.lastAction === 'use_soul_bell' ? 'bell' : battle.lastAction
 
   return (
-    <section className={`battle-panel phase-${phase} ${effect ? `effect-${effect}` : ''}`}>
+    <section
+      key={`${battle.turn}-${battle.enemyHp}-${battle.phase}-${battle.lastAction}`}
+      className={`battle-panel phase-${phase} ${effect ? `effect-${effect}` : ''}`}
+    >
       <div className="player-health-strip" aria-label="Player health">
         <span>你的生命</span>
         <div><b style={{ width: `${playerRatio * 100}%` }} /></div>
