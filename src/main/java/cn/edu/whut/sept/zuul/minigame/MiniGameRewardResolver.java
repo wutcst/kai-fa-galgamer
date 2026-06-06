@@ -38,11 +38,12 @@ public class MiniGameRewardResolver {
             case "mirror_room_event" -> {
                 flags.put("mirror_success", true);
                 if (type == MiniGameResultType.GREAT_SUCCESS) {
+                    items.add("mirror_shard");
                     items.add("savebreaker_key");
                     message = "点数完美抵达二十一，断档之钥从镜面裂隙中落下。";
                 } else {
-                    items.add("mirror_shard");
-                    message = "镜面承认了你的点数，镜面碎片凝结成形。";
+                    items.add("savebreaker_key");
+                    message = "镜面承认了你的点数，断档之钥凝结成形。";
                 }
             }
             case "order_altar_event" -> {
@@ -60,11 +61,13 @@ public class MiniGameRewardResolver {
                 flags.put("soul_shard", true);
                 flags.put("garden_restored", true);
                 if (type == MiniGameResultType.GREAT_SUCCESS) {
+                    items.add("soul_flower");
                     items.add("pure_seed");
                     message = "所有符文被连通，纯净种子在灵魂花园中苏醒。";
                 } else {
                     items.add("soul_flower");
-                    message = "灵魂花园短暂复苏，灵魂花回应了你的连线。";
+                    items.add("pure_seed");
+                    message = "灵魂花园短暂复苏，灵魂花与纯净种子回应了你的连线。";
                 }
             }
             default -> message = "小游戏完成，世界记录了这次结果。";

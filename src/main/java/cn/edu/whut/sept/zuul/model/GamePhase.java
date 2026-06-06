@@ -5,5 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "游戏阶段。")
 public enum GamePhase {
     EXPLORING,
-    MINIGAME
+    MINIGAME,
+    BATTLE,
+    ENDING
 }

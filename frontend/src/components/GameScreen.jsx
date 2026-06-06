@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import BattlePanel from './BattlePanel'
+import ChoicePanel from './ChoicePanel'
 import DirectionButtons from './DirectionButtons'
 import InventoryModal from './InventoryModal'
 import MiniGameOutcomePanel from './MiniGameOutcomePanel'
@@ -12,9 +14,11 @@ function GameScreen({ snapshot, assets, loading, onAction }) {
   const actions = snapshot.availableActions ?? []
   const utilityActions = actions.filter(
     (action) => actionType(action) !== 'MOVE'
-      && !(['MINI_GAME_INPUT', 'ACK_MINI_GAME_RESULT'].includes(actionType(action)))
+      && !(['MINI_GAME_INPUT', 'ACK_MINI_GAME_RESULT', 'BATTLE_ACTION', 'CHOOSE_ENDING'].includes(actionType(action)))
       && !(puzzle && ['CRAFT', 'ANSWER'].includes(actionType(action))),
   )
+  const inBattle = Boolean(snapshot.battle)
+  const inChoice = Boolean(snapshot.ending || snapshot.choices?.length)
 
   return (
     <main className="game-screen">
@@ -46,13 +50,25 @@ function GameScreen({ snapshot, assets, loading, onAction }) {
           {snapshot.errorMessage ? <strong className="error-message">{snapshot.errorMessage}</strong> : null}
         </article>
 
-        {snapshot.miniGameOutcome ? (
+        {snapshot.battle ? (
+          <BattlePanel
+            battle={snapshot.battle}
+            assets={assets}
+            loading={loading}
+            playerHp={snapshot.playerHp}
+            onAction={onAction}
+          />
+        ) : null}
+        {!snapshot.battle && inChoice ? (
+          <ChoicePanel snapshot={snapshot} assets={assets} loading={loading} onAction={onAction} />
+        ) : null}
+        {!inBattle && !inChoice && snapshot.miniGameOutcome ? (
           <MiniGameOutcomePanel outcome={snapshot.miniGameOutcome} loading={loading} onAction={onAction} />
         ) : null}
-        {!snapshot.miniGameOutcome && snapshot.miniGame ? (
+        {!inBattle && !inChoice && !snapshot.miniGameOutcome && snapshot.miniGame ? (
           <MiniGamePanel miniGame={snapshot.miniGame} assets={assets} loading={loading} onAction={onAction} />
         ) : null}
-        {!snapshot.miniGameOutcome && !snapshot.miniGame && puzzle ? (
+        {!inBattle && !inChoice && !snapshot.miniGameOutcome && !snapshot.miniGame && puzzle ? (
           <PuzzleModal puzzle={puzzle} loading={loading} onAction={onAction} />
         ) : null}
 

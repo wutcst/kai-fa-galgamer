@@ -50,7 +50,7 @@ public class EventEngine {
         register(new WorldFlagEvent(
                 "broken_shelf_event",
                 "破损书架吐出旧挑战者的真相：祖尔也许只是失败循环中的另一个自己。",
-                java.util.List.of("blank_dice", "boss_truth"),
+                java.util.List.of("blank_dice", "nameless_badge", "boss_truth"),
                 java.util.List.of("memory_shard")
         ));
         register(new WorldFlagEvent(
