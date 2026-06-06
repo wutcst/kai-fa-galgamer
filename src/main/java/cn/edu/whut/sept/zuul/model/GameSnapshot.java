@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
+import java.util.Map;
 
 @Schema(description = "统一游戏状态快照。后端所有核心游戏接口均返回该对象，前端仅基于快照渲染界面。")
 public record GameSnapshot(
@@ -31,6 +32,12 @@ public record GameSnapshot(
         @ArraySchema(schema = @Schema(implementation = GameActionOption.class))
         List<GameActionOption> availableActions,
 
+        @Schema(description = "当前房间未解决谜题。没有谜题或谜题已解决时为 null。", nullable = true)
+        PuzzleView puzzle,
+
+        @Schema(description = "当前世界 Flag，用于前端展示和测试验收。")
+        Map<String, Boolean> flags,
+
         @ArraySchema(schema = @Schema(description = "最近探索日志。", example = "你向北移动，抵达：记忆图书馆"))
         List<String> logs,
 
@@ -40,4 +47,24 @@ public record GameSnapshot(
         @Schema(description = "错误提示。没有错误时为 null。", example = "当前阶段不能执行该动作。", nullable = true)
         String errorMessage
 ) {
+    public record PuzzleView(
+            @Schema(description = "谜题 ID。", example = "mirror_number_door")
+            String id,
+
+            @Schema(description = "谜题展示提示。", example = "镜面要求你给出恰好的数字。")
+            String prompt,
+
+            @Schema(description = "谜题类型。", example = "PASSWORD")
+            String kind,
+
+            @ArraySchema(schema = @Schema(description = "可点击选项。"))
+            List<String> options,
+
+            @Schema(description = "是否允许自由输入。", example = "true")
+            boolean freeText,
+
+            @Schema(description = "提交动作类型。", example = "ANSWER")
+            String submitAction
+    ) {
+    }
 }

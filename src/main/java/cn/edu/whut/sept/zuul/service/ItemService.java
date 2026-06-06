@@ -83,6 +83,11 @@ public class ItemService {
         register(map, "broken_bell", "破损铃铛");
         register(map, "soul_flower", "灵魂花");
         register(map, "silver_thread", "银线");
+        register(map, "library_note", "禁书残页");
+        register(map, "rune_clue", "符文线索");
+        register(map, "boss_truth", "祖尔真相");
+        register(map, "mirror_shard", "镜面碎片");
+        register(map, "purified_ash", "净化灰烬");
         return Map.copyOf(map);
     }
 

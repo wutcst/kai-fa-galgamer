@@ -126,14 +126,22 @@
 }
 
 .story-panel,
+.puzzle-modal,
 .control-panel,
 .log-panel {
   border-radius: 8px;
 }
 
 .story-panel {
+  grid-column: 1;
+  grid-row: 1;
   min-height: 250px;
   padding: clamp(22px, 3vw, 34px);
+}
+
+.control-panel {
+  grid-column: 2;
+  grid-row: 1 / span 2;
 }
 
 .room-id {
@@ -155,6 +163,64 @@
   color: #d9d2c5;
   font-size: clamp(16px, 1.8vw, 20px);
   line-height: 1.8;
+}
+
+.puzzle-modal {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  background: rgba(9, 16, 28, 0.78);
+  border: 1px solid rgba(147, 222, 218, 0.5);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.36), inset 0 0 24px rgba(122, 226, 224, 0.04);
+  backdrop-filter: blur(14px);
+}
+
+.puzzle-header span {
+  color: #93deda;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.puzzle-header h2 {
+  margin: 6px 0 0;
+  color: #fff7df;
+  font-size: 20px;
+}
+
+.puzzle-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.puzzle-input-row input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  color: #f4ecd5;
+  background: rgba(5, 8, 14, 0.82);
+  border: 1px solid rgba(204, 170, 96, 0.62);
+  border-radius: 6px;
+}
+
+.puzzle-input-row button,
+.puzzle-options button {
+  min-height: 44px;
+  padding: 0 14px;
+  cursor: pointer;
+  color: #0b1523;
+  background: #93deda;
+  border: 0;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.puzzle-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .system-message,
@@ -295,6 +361,13 @@
   .narrative-layout {
     min-height: auto;
     padding-top: 28vh;
+  }
+
+  .story-panel,
+  .puzzle-modal,
+  .control-panel {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .story-panel h1 {

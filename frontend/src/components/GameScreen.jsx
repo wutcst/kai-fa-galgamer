@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import DirectionButtons from './DirectionButtons'
 import InventoryModal from './InventoryModal'
+import PuzzleModal from './PuzzleModal'
 
 function GameScreen({ snapshot, assets, loading, onAction }) {
   const [inventoryOpen, setInventoryOpen] = useState(false)
   const sceneUrl = assets[snapshot.roomAssetKey] ?? assets.fallback
-  const utilityActions = snapshot.availableActions.filter((action) => action.actionType !== 'MOVE' && action.actionType !== 'CRAFT')
+  const puzzle = normalizePuzzle(snapshot)
+  const actions = snapshot.availableActions ?? []
+  const utilityActions = actions.filter(
+    (action) => actionType(action) !== 'MOVE' && !(puzzle && ['CRAFT', 'ANSWER'].includes(actionType(action))),
+  )
 
   return (
     <main className="game-screen">
@@ -37,8 +42,10 @@ function GameScreen({ snapshot, assets, loading, onAction }) {
           {snapshot.errorMessage ? <strong className="error-message">{snapshot.errorMessage}</strong> : null}
         </article>
 
+        {puzzle ? <PuzzleModal puzzle={puzzle} loading={loading} onAction={onAction} /> : null}
+
         <aside className="control-panel">
-          <DirectionButtons actions={snapshot.availableActions} onAction={onAction} disabled={loading} />
+          <DirectionButtons actions={actions} onAction={onAction} disabled={loading} />
 
           <div className="action-row">
             {utilityActions.map((action) => (
@@ -82,6 +89,48 @@ function GameScreen({ snapshot, assets, loading, onAction }) {
       ) : null}
     </main>
   )
+}
+
+function normalizePuzzle(snapshot) {
+  if (snapshot.puzzle) {
+    return {
+      ...snapshot.puzzle,
+      options: snapshot.puzzle.options ?? [],
+      freeText: Boolean(snapshot.puzzle.freeText ?? snapshot.puzzle.free_text ?? snapshot.puzzle.requiresInput),
+      submitAction: snapshot.puzzle.submitAction ?? snapshot.puzzle.submit_action ?? 'ANSWER',
+    }
+  }
+
+  const actions = snapshot.availableActions ?? []
+  const answerAction = actions.find((action) => actionType(action) === 'ANSWER')
+  if (answerAction) {
+    return {
+      id: answerAction.target,
+      prompt: answerAction.label || '请输入谜题答案。',
+      kind: 'GENERIC',
+      options: [],
+      freeText: true,
+      submitAction: 'ANSWER',
+    }
+  }
+
+  const craftAction = actions.find((action) => actionType(action) === 'CRAFT')
+  if (craftAction) {
+    return {
+      id: craftAction.target,
+      prompt: craftAction.label || '选择要合成的道具。',
+      kind: 'ITEM_COMBINATION',
+      options: [craftAction.target].filter(Boolean),
+      freeText: false,
+      submitAction: 'CRAFT',
+    }
+  }
+
+  return null
+}
+
+function actionType(action) {
+  return String(action?.actionType ?? '').toUpperCase()
 }
 
 export default GameScreen
