@@ -8,13 +8,13 @@ import java.util.Map;
 
 @Schema(description = "统一游戏状态快照。后端所有核心游戏接口均返回该对象，前端仅基于快照渲染界面。")
 public record GameSnapshot(
-        @Schema(description = "当前房间 ID。", example = "start_room")
+        @Schema(description = "当前房间 ID。", example = "fate_hall")
         String currentRoomId,
 
-        @Schema(description = "当前房间标题。", example = "命运裂隙")
+        @Schema(description = "当前房间标题。", example = "命运大厅")
         String roomTitle,
 
-        @Schema(description = "当前房间描述。", example = "你在一道微光裂隙前醒来，远处传来王座钟声。")
+        @Schema(description = "当前房间描述。", example = "破碎石阶延伸向四条岔路。")
         String roomDescription,
 
         @Schema(description = "玩家当前生命值。", example = "100", minimum = "0")
@@ -26,7 +26,7 @@ public record GameSnapshot(
         @Schema(description = "当前游戏阶段。", example = "EXPLORING")
         GamePhase gamePhase,
 
-        @Schema(description = "当前房间场景资源 key，前端通过 asset-manifest.json 映射到图片路径。", example = "scene.fate_hall")
+        @Schema(description = "当前房间场景资源 key。", example = "scene.fate_hall")
         String roomAssetKey,
 
         @ArraySchema(schema = @Schema(implementation = GameActionOption.class))
@@ -35,36 +35,54 @@ public record GameSnapshot(
         @Schema(description = "当前房间未解决谜题。没有谜题或谜题已解决时为 null。", nullable = true)
         PuzzleView puzzle,
 
-        @Schema(description = "当前世界 Flag，用于前端展示和测试验收。")
+        @Schema(description = "当前世界 Flag。")
         Map<String, Boolean> flags,
+
+        @Schema(description = "当前进行中的小游戏。没有小游戏时为 null。", nullable = true)
+        MiniGameView miniGame,
+
+        @Schema(description = "待确认的小游戏结果。没有结果时为 null。", nullable = true)
+        MiniGameOutcome miniGameOutcome,
 
         @ArraySchema(schema = @Schema(description = "最近探索日志。", example = "你向北移动，抵达：记忆图书馆"))
         List<String> logs,
 
-        @Schema(description = "普通系统消息，用于展示操作结果或剧情提示。", example = "新游戏已初始化。")
+        @Schema(description = "普通系统消息，用于展示操作结果或剧情提示。")
         String systemMessage,
 
-        @Schema(description = "错误提示。没有错误时为 null。", example = "当前阶段不能执行该动作。", nullable = true)
+        @Schema(description = "错误提示。没有错误时为 null。", nullable = true)
         String errorMessage
 ) {
     public record PuzzleView(
-            @Schema(description = "谜题 ID。", example = "mirror_number_door")
             String id,
-
-            @Schema(description = "谜题展示提示。", example = "镜面要求你给出恰好的数字。")
             String prompt,
-
-            @Schema(description = "谜题类型。", example = "PASSWORD")
             String kind,
-
-            @ArraySchema(schema = @Schema(description = "可点击选项。"))
             List<String> options,
-
-            @Schema(description = "是否允许自由输入。", example = "true")
             boolean freeText,
-
-            @Schema(description = "提交动作类型。", example = "ANSWER")
             String submitAction
+    ) {
+    }
+
+    public record MiniGameView(
+            String sessionId,
+            String gameId,
+            String eventId,
+            String phase,
+            List<String> actions,
+            Map<String, Object> state
+    ) {
+    }
+
+    public record MiniGameOutcome(
+            String sessionId,
+            String gameId,
+            String eventId,
+            String resultType,
+            int score,
+            String message,
+            List<String> rewardItems,
+            Map<String, Boolean> flags,
+            Map<String, Object> details
     ) {
     }
 }

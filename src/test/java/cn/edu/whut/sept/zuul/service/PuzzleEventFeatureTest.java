@@ -1,6 +1,8 @@
 package cn.edu.whut.sept.zuul.service;
 
 import cn.edu.whut.sept.zuul.event.EventEngine;
+import cn.edu.whut.sept.zuul.minigame.MiniGameRewardResolver;
+import cn.edu.whut.sept.zuul.minigame.MiniGameService;
 import cn.edu.whut.sept.zuul.model.GameActionRequest;
 import cn.edu.whut.sept.zuul.model.GameSnapshot;
 import cn.edu.whut.sept.zuul.puzzle.PuzzleConfig;
@@ -16,23 +18,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PuzzleEventFeatureTest {
 
     @Test
-    void mirrorPasswordRequiresLibraryClueThenRewardsByEvent() {
+    void mirrorPasswordStartsPointMiniGameInsteadOfImmediateReward() {
         RoomService service = service();
         service.initGame();
         act(service, "MOVE", "north", null);
         act(service, "INSPECT", "memory_library", null);
         act(service, "MOVE", "south", null);
-        GameSnapshot mirror = act(service, "MOVE", "east", null);
-
-        assertNotNull(mirror.puzzle());
-        assertEquals("mirror_number_door", mirror.puzzle().id());
+        act(service, "MOVE", "east", null);
 
         GameSnapshot solved = act(service, "ANSWER", "mirror_number_door", "21");
 
         assertNull(solved.puzzle());
-        assertTrue(solved.flags().get("mirror_door_open"));
-        assertTrue(solved.flags().get("event_completed.mirror_room_event"));
-        assertTrue(solved.inventoryItems().contains("mirror_shard"));
+        assertNotNull(solved.miniGame());
+        assertEquals("point_game", solved.miniGame().gameId());
+        assertEquals("MINIGAME", solved.gamePhase().name());
     }
 
     @Test
@@ -56,31 +55,39 @@ class PuzzleEventFeatureTest {
     }
 
     @Test
-    void sealGateOpensAfterTwoShardEventsAndRewardsBadge() {
+    void altarInspectStartsDiceMiniGameAndBlocksMovementUntilOutcomeConfirmed() {
         RoomService service = service();
         service.initGame();
-        act(service, "MOVE", "north", null);
-        act(service, "MOVE", "west", null);
-        act(service, "INSPECT", "broken_shelf", null);
-        act(service, "MOVE", "east", null);
-        act(service, "MOVE", "south", null);
         act(service, "MOVE", "south", null);
         act(service, "ANSWER", "rune_direction_sequence", "south north east west");
         act(service, "MOVE", "south", null);
-        act(service, "INSPECT", "order_altar", null);
-        act(service, "MOVE", "north", null);
-        act(service, "MOVE", "north", null);
-        act(service, "MOVE", "west", null);
-        GameSnapshot gate = act(service, "MOVE", "south", null);
 
-        assertEquals("triple_seal_gate", gate.currentRoomId());
-        assertNotNull(gate.puzzle());
+        GameSnapshot miniGame = act(service, "INSPECT", "order_altar", null);
+        assertNotNull(miniGame.miniGame());
+        assertEquals("dice_check", miniGame.miniGame().gameId());
 
-        GameSnapshot opened = act(service, "ANSWER", "triple_seal_gate", "open");
+        GameSnapshot blocked = act(service, "MOVE", "south", null);
+        assertEquals("请先完成或确认小游戏结果。", blocked.errorMessage());
+    }
 
-        assertTrue(opened.flags().get("triple_seal_open"));
-        assertTrue(opened.inventoryItems().contains("nameless_badge"));
-        assertNull(opened.puzzle());
+    @Test
+    void ackMiniGameResultReturnsToExploringAndCompletesEvent() {
+        RoomService service = service();
+        service.initGame();
+        act(service, "MOVE", "south", null);
+        act(service, "ANSWER", "rune_direction_sequence", "south north east west");
+        act(service, "MOVE", "south", null);
+        GameSnapshot miniGame = act(service, "INSPECT", "order_altar", null);
+
+        GameSnapshot outcome = act(service, "MINI_GAME_INPUT", miniGame.miniGame().sessionId(), "roll");
+        assertNotNull(outcome.miniGameOutcome());
+
+        GameSnapshot acknowledged = act(service, "ACK_MINI_GAME_RESULT", outcome.miniGameOutcome().sessionId(), null);
+
+        assertNull(acknowledged.miniGame());
+        assertNull(acknowledged.miniGameOutcome());
+        assertEquals("EXPLORING", acknowledged.gamePhase().name());
+        assertTrue(acknowledged.flags().get("event_completed.order_altar_event"));
     }
 
     @Test
@@ -97,7 +104,13 @@ class PuzzleEventFeatureTest {
         ItemService itemService = new ItemService();
         PlayerService playerService = new PlayerService(itemService);
         WorldState worldState = new WorldState();
-        return new RoomService(playerService, worldState, new PuzzleEngine(new PuzzleConfig().puzzleRegistry()), new EventEngine());
+        return new RoomService(
+                playerService,
+                worldState,
+                new PuzzleEngine(new PuzzleConfig().puzzleRegistry()),
+                new EventEngine(),
+                new MiniGameService(new MiniGameRewardResolver())
+        );
     }
 
     private GameSnapshot act(RoomService service, String actionType, String target, String value) {

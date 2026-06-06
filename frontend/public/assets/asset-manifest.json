@@ -22,5 +22,16 @@
   "item.soul_bell": "/assets/items/soul_bell.png",
   "item.broken_bell": "/assets/items/broken_bell.png",
   "item.soul_flower": "/assets/items/soul_flower.png",
-  "item.silver_thread": "/assets/items/silver_thread.png"
+  "item.silver_thread": "/assets/items/silver_thread.png",
+  "minigame.dice.bg": "/assets/minigame/dice/dice-bg.png",
+  "minigame.dice.result.great": "/assets/minigame/dice/dice-great.png",
+  "minigame.dice.result.success": "/assets/minigame/dice/dice-success.png",
+  "minigame.dice.result.failure": "/assets/minigame/dice/dice-failure.png",
+  "minigame.point.bg": "/assets/minigame/point/point-bg.png",
+  "minigame.point.card": "/assets/minigame/point/point-card.png",
+  "minigame.link.bg": "/assets/minigame/link/link-bg.png",
+  "minigame.link.tile.a": "/assets/minigame/link/link-tile-a.png",
+  "minigame.link.tile.b": "/assets/minigame/link/link-tile-b.png",
+  "minigame.link.tile.c": "/assets/minigame/link/link-tile-c.png",
+  "minigame.link.tile.d": "/assets/minigame/link/link-tile-d.png"
 }

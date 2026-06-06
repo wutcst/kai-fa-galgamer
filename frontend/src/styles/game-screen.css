@@ -127,6 +127,7 @@
 
 .story-panel,
 .puzzle-modal,
+.minigame-panel,
 .control-panel,
 .log-panel {
   border-radius: 8px;
@@ -221,6 +222,141 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.minigame-panel {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  gap: 16px;
+  min-height: 320px;
+  padding: 22px;
+  overflow: hidden;
+  background-color: rgba(9, 16, 28, 0.86);
+  background-position: center;
+  background-size: cover;
+  border: 1px solid rgba(147, 222, 218, 0.5);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.36), inset 0 0 24px rgba(122, 226, 224, 0.06);
+  backdrop-filter: blur(14px);
+}
+
+.minigame-header span {
+  color: #93deda;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.minigame-header h2 {
+  margin: 6px 0 0;
+  color: #fff7df;
+  font-size: 26px;
+}
+
+.dice-row,
+.card-row,
+.minigame-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.die-face,
+.point-card {
+  display: grid;
+  width: 76px;
+  height: 76px;
+  place-items: center;
+  color: #0b1523;
+  background: rgba(245, 216, 144, 0.92);
+  border: 2px solid rgba(147, 222, 218, 0.7);
+  border-radius: 10px;
+  box-shadow: 0 0 22px rgba(147, 222, 218, 0.25);
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.point-total {
+  color: #f5d890;
+  font-size: 72px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.minigame-score,
+.minigame-message {
+  color: #d9d2c5;
+  font-size: 16px;
+}
+
+.minigame-primary,
+.minigame-secondary {
+  min-height: 44px;
+  padding: 0 18px;
+  cursor: pointer;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.minigame-primary {
+  color: #0b1523;
+  background: #93deda;
+  border: 0;
+}
+
+.minigame-secondary {
+  color: #f4ecd5;
+  background: rgba(9, 16, 28, 0.78);
+  border: 1px solid rgba(204, 170, 96, 0.7);
+}
+
+.link-board {
+  display: grid;
+  gap: 10px;
+  width: min(460px, 100%);
+}
+
+.link-tile {
+  aspect-ratio: 1;
+  padding: 7px;
+  cursor: pointer;
+  background: rgba(9, 16, 28, 0.72);
+  border: 1px solid rgba(204, 170, 96, 0.58);
+  border-radius: 8px;
+}
+
+.link-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.link-tile.is-selected {
+  border-color: #93deda;
+  filter: drop-shadow(0 0 8px rgba(147, 222, 218, 0.85));
+}
+
+.link-tile.is-empty {
+  cursor: default;
+  opacity: 0.2;
+}
+
+.outcome-stats {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  color: #d9d2c5;
+}
+
+.outcome-stats div {
+  display: flex;
+  gap: 12px;
+}
+
+.outcome-stats dt {
+  color: #93deda;
 }
 
 .system-message,
@@ -365,6 +501,7 @@
 
   .story-panel,
   .puzzle-modal,
+  .minigame-panel,
   .control-panel {
     grid-column: 1;
     grid-row: auto;

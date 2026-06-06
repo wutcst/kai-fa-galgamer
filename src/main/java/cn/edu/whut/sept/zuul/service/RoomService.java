@@ -9,6 +9,7 @@ import cn.edu.whut.sept.zuul.model.GamePhase;
 import cn.edu.whut.sept.zuul.model.GameSnapshot;
 import cn.edu.whut.sept.zuul.model.Room;
 import cn.edu.whut.sept.zuul.item.CraftResult;
+import cn.edu.whut.sept.zuul.minigame.MiniGameService;
 import cn.edu.whut.sept.zuul.puzzle.PuzzleEngine;
 import cn.edu.whut.sept.zuul.puzzle.PuzzleResult;
 import cn.edu.whut.sept.zuul.state.WorldState;
@@ -40,20 +41,28 @@ public class RoomService {
             "alchemy_workshop", "soul_bell_formula",
             "triple_seal_gate", "triple_seal_gate"
     );
+    private static final Map<String, String> MINI_GAME_EVENTS = Map.of(
+            "mirror_room_event", "point_game",
+            "order_altar_event", "dice_check",
+            "garden_event", "link_match"
+    );
 
     private final PlayerService playerService;
     private final WorldState worldState;
     private final PuzzleEngine puzzleEngine;
     private final EventEngine eventEngine;
+    private final MiniGameService miniGameService;
     private final Map<String, Room> rooms = createRooms();
     private final List<String> logs = new ArrayList<>();
     private String currentRoomId = START_ROOM_ID;
 
-    public RoomService(PlayerService playerService, WorldState worldState, PuzzleEngine puzzleEngine, EventEngine eventEngine) {
+    public RoomService(PlayerService playerService, WorldState worldState, PuzzleEngine puzzleEngine,
+                       EventEngine eventEngine, MiniGameService miniGameService) {
         this.playerService = playerService;
         this.worldState = worldState;
         this.puzzleEngine = puzzleEngine;
         this.eventEngine = eventEngine;
+        this.miniGameService = miniGameService;
     }
 
     public synchronized GameSnapshot initGame() {
@@ -61,6 +70,7 @@ public class RoomService {
         logs.clear();
         playerService.reset();
         worldState.reset();
+        miniGameService.reset();
         return snapshot("新游戏已初始化。你在命运大厅醒来。", null);
     }
 
@@ -69,7 +79,18 @@ public class RoomService {
             return snapshot("动作未执行。", "缺少动作类型。");
         }
 
-        return switch (request.actionType().trim().toUpperCase(Locale.ROOT)) {
+        String actionType = request.actionType().trim().toUpperCase(Locale.ROOT);
+        if ("ACK_MINI_GAME_RESULT".equals(actionType)) {
+            return snapshot(miniGameService.acknowledge(playerService, worldState), null);
+        }
+        if ("MINI_GAME_INPUT".equals(actionType)) {
+            return snapshot(miniGameService.handleInput(request.target(), request.value(), request.payload()), null);
+        }
+        if (miniGameService.hasActiveMiniGame() || miniGameService.hasPendingOutcome()) {
+            return snapshot("小游戏尚未结束。", "请先完成或确认小游戏结果。");
+        }
+
+        return switch (actionType) {
             case "MOVE" -> move(request.target());
             case "LOOK" -> look();
             case "INSPECT" -> inspect();
@@ -125,6 +146,9 @@ public class RoomService {
             return snapshot("调查结果：" + room.inspectText(), null);
         }
 
+        if (MINI_GAME_EVENTS.containsKey(eventId) && !worldState.getBoolean("event_completed." + eventId)) {
+            return snapshot("调查结果：" + room.inspectText() + " " + miniGameService.start(MINI_GAME_EVENTS.get(eventId), eventId), null);
+        }
         EventResult result = eventEngine.trigger(eventId, playerService, worldState);
         String eventText = result.message() == null || result.message().isBlank() ? "" : " " + result.message();
         return snapshot("调查结果：" + room.inspectText() + eventText, null);
@@ -139,6 +163,9 @@ public class RoomService {
         PuzzleResult result = puzzleEngine.attempt(puzzleId, value, playerService, worldState);
         Object startEventId = result.data().get("startEventId");
         if (startEventId instanceof String eventId) {
+            if (MINI_GAME_EVENTS.containsKey(eventId) && !worldState.getBoolean("event_completed." + eventId)) {
+                return snapshot(result.message() + " " + miniGameService.start(MINI_GAME_EVENTS.get(eventId), eventId), null);
+            }
             EventResult eventResult = eventEngine.trigger(eventId, playerService, worldState);
             String suffix = eventResult.message() == null || eventResult.message().isBlank() ? "" : " " + eventResult.message();
             return snapshot(result.message() + suffix, null);
@@ -167,11 +194,13 @@ public class RoomService {
                 room.description(),
                 playerService.hp(),
                 playerService.inventoryItems(),
-                GamePhase.EXPLORING,
+                miniGameService.hasActiveMiniGame() || miniGameService.hasPendingOutcome() ? GamePhase.MINIGAME : GamePhase.EXPLORING,
                 room.assetKey(),
                 availableActions(room),
                 puzzleView(room),
                 worldState.flags(),
+                miniGameService.view(),
+                miniGameService.outcomeView(),
                 List.copyOf(logs),
                 systemMessage,
                 errorMessage
@@ -207,6 +236,12 @@ public class RoomService {
         }
         if ("alchemy_workshop".equals(room.id())) {
             actions.add(new GameActionOption("CRAFT", "合成灵魂之铃", ItemService.SOUL_BELL, false));
+        }
+        if (miniGameService.hasActiveMiniGame()) {
+            actions.add(new GameActionOption("MINI_GAME_INPUT", "操作小游戏", "", false));
+        }
+        if (miniGameService.hasPendingOutcome()) {
+            actions.add(new GameActionOption("ACK_MINI_GAME_RESULT", "确认小游戏结果", "", false));
         }
         actions.add(new GameActionOption("SAVE", "保存游戏", "slot_1", false));
         return actions;

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import DirectionButtons from './DirectionButtons'
 import InventoryModal from './InventoryModal'
+import MiniGameOutcomePanel from './MiniGameOutcomePanel'
+import MiniGamePanel from './MiniGamePanel'
 import PuzzleModal from './PuzzleModal'
 
 function GameScreen({ snapshot, assets, loading, onAction }) {
@@ -9,7 +11,9 @@ function GameScreen({ snapshot, assets, loading, onAction }) {
   const puzzle = normalizePuzzle(snapshot)
   const actions = snapshot.availableActions ?? []
   const utilityActions = actions.filter(
-    (action) => actionType(action) !== 'MOVE' && !(puzzle && ['CRAFT', 'ANSWER'].includes(actionType(action))),
+    (action) => actionType(action) !== 'MOVE'
+      && !(['MINI_GAME_INPUT', 'ACK_MINI_GAME_RESULT'].includes(actionType(action)))
+      && !(puzzle && ['CRAFT', 'ANSWER'].includes(actionType(action))),
   )
 
   return (
@@ -42,7 +46,15 @@ function GameScreen({ snapshot, assets, loading, onAction }) {
           {snapshot.errorMessage ? <strong className="error-message">{snapshot.errorMessage}</strong> : null}
         </article>
 
-        {puzzle ? <PuzzleModal puzzle={puzzle} loading={loading} onAction={onAction} /> : null}
+        {snapshot.miniGameOutcome ? (
+          <MiniGameOutcomePanel outcome={snapshot.miniGameOutcome} loading={loading} onAction={onAction} />
+        ) : null}
+        {!snapshot.miniGameOutcome && snapshot.miniGame ? (
+          <MiniGamePanel miniGame={snapshot.miniGame} assets={assets} loading={loading} onAction={onAction} />
+        ) : null}
+        {!snapshot.miniGameOutcome && !snapshot.miniGame && puzzle ? (
+          <PuzzleModal puzzle={puzzle} loading={loading} onAction={onAction} />
+        ) : null}
 
         <aside className="control-panel">
           <DirectionButtons actions={actions} onAction={onAction} disabled={loading} />
