@@ -4,6 +4,7 @@ import cn.edu.whut.sept.zuul.model.GameActionRequest;
 import cn.edu.whut.sept.zuul.model.GameSnapshot;
 import cn.edu.whut.sept.zuul.model.LoadGameRequest;
 import cn.edu.whut.sept.zuul.model.SaveGameRequest;
+import cn.edu.whut.sept.zuul.save.SaveManager;
 import cn.edu.whut.sept.zuul.service.RoomService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -12,6 +13,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,9 +26,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class GameController {
 
     private final RoomService roomService;
+    private final SaveManager saveManager;
 
-    public GameController(RoomService roomService) {
+    public GameController(RoomService roomService, SaveManager saveManager) {
         this.roomService = roomService;
+        this.saveManager = saveManager;
+    }
+
+    @GetMapping("/menu")
+    public GameSnapshot menu() {
+        return roomService.menu();
+    }
+
+    @GetMapping("/state")
+    public GameSnapshot state() {
+        return roomService.state();
     }
 
     @Operation(
@@ -132,5 +147,29 @@ public class GameController {
     public GameSnapshot loadGame(@RequestBody LoadGameRequest request) {
         String saveId = request == null ? "slot_1" : request.saveId();
         return roomService.load(saveId);
+    }
+
+    @GetMapping("/saves")
+    public GameSnapshot.SaveView saves() {
+        return new GameSnapshot.SaveView(saveManager.saveService().listSaves().stream()
+                .map(data -> new GameSnapshot.SaveSlotView(
+                        data.getSaveId(),
+                        true,
+                        data.getCurrentRoomId(),
+                        data.getCurrentRoomId(),
+                        data.getGamePhase().name(),
+                        data.getSavedAt()
+                ))
+                .toList());
+    }
+
+    @DeleteMapping("/saves/{saveId}")
+    public GameSnapshot deleteSave(@PathVariable String saveId) {
+        try {
+            boolean deleted = saveManager.saveService().delete(saveId);
+            return roomService.state().withMessage(deleted ? "存档已删除：" + saveId : "存档不存在：" + saveId, null);
+        } catch (RuntimeException ex) {
+            return roomService.state().withMessage("存档未删除。", ex.getMessage());
+        }
     }
 }

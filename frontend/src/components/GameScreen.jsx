@@ -1,11 +1,12 @@
 import { useState } from 'react'
+import BattlePanel from './BattlePanel'
 import DirectionButtons from './DirectionButtons'
 import InventoryModal from './InventoryModal'
 import MiniGameOutcomePanel from './MiniGameOutcomePanel'
 import MiniGamePanel from './MiniGamePanel'
 import PuzzleModal from './PuzzleModal'
 
-function GameScreen({ snapshot, assets, loading, onAction }) {
+function GameScreen({ snapshot, assets, loading, onAction, onOpenSave }) {
   const [inventoryOpen, setInventoryOpen] = useState(false)
   const sceneUrl = assets[snapshot.roomAssetKey] ?? assets.fallback
   const puzzle = normalizePuzzle(snapshot)
@@ -49,6 +50,9 @@ function GameScreen({ snapshot, assets, loading, onAction }) {
         {snapshot.miniGameOutcome ? (
           <MiniGameOutcomePanel outcome={snapshot.miniGameOutcome} loading={loading} onAction={onAction} />
         ) : null}
+        {!snapshot.miniGameOutcome && snapshot.boss ? (
+          <BattlePanel boss={snapshot.boss} loading={loading} onAction={onAction} />
+        ) : null}
         {!snapshot.miniGameOutcome && snapshot.miniGame ? (
           <MiniGamePanel miniGame={snapshot.miniGame} assets={assets} loading={loading} onAction={onAction} />
         ) : null}
@@ -67,11 +71,13 @@ function GameScreen({ snapshot, assets, loading, onAction }) {
                 type="button"
                 disabled={loading}
                 onClick={() =>
-                  onAction({
-                    actionType: action.actionType,
-                    target: action.target,
-                    value: null,
-                  })
+                  ['SAVE', 'LOAD'].includes(actionType(action)) && onOpenSave
+                    ? onOpenSave()
+                    : onAction({
+                        actionType: action.actionType,
+                        target: action.target,
+                        value: null,
+                      })
                 }
               >
                 {action.label}

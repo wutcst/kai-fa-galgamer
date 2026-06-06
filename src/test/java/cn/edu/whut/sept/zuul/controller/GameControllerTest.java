@@ -73,7 +73,7 @@ class GameControllerTest {
     }
 
     @Test
-    void saveAndLoadShouldReturnMockSnapshot() throws Exception {
+    void saveAndLoadShouldReturnRealSnapshot() throws Exception {
         mockMvc.perform(post("/api/game/save")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -82,7 +82,7 @@ class GameControllerTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.systemMessage").value("Mock 存档已保存：slot_1"));
+                .andExpect(jsonPath("$.systemMessage").value("存档已保存：slot_1"));
 
         mockMvc.perform(post("/api/game/load")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -92,6 +92,6 @@ class GameControllerTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.systemMessage").value("Mock 存档已读取：slot_1"));
+                .andExpect(jsonPath("$.systemMessage").value("存档已读取：slot_1"));
     }
 }

@@ -44,6 +44,21 @@ public record GameSnapshot(
         @Schema(description = "待确认的小游戏结果。没有结果时为 null。", nullable = true)
         MiniGameOutcome miniGameOutcome,
 
+        @Schema(description = "主菜单视图。非主菜单阶段为 null。", nullable = true)
+        MenuView menu,
+
+        @Schema(description = "存档视图。没有打开存档面板时为 null。", nullable = true)
+        SaveView save,
+
+        @Schema(description = "Boss 战视图。非 Boss 阶段为 null。", nullable = true)
+        BossView boss,
+
+        @Schema(description = "结局视图。非结局阶段为 null。", nullable = true)
+        EndingView ending,
+
+        @Schema(description = "创作者模式视图。非创作者模式为 null。", nullable = true)
+        CreatorView creator,
+
         @ArraySchema(schema = @Schema(description = "最近探索日志。", example = "你向北移动，抵达：记忆图书馆"))
         List<String> logs,
 
@@ -53,6 +68,31 @@ public record GameSnapshot(
         @Schema(description = "错误提示。没有错误时为 null。", nullable = true)
         String errorMessage
 ) {
+    public GameSnapshot withMessage(String nextSystemMessage, String nextErrorMessage) {
+        return new GameSnapshot(
+                currentRoomId,
+                roomTitle,
+                roomDescription,
+                playerHp,
+                inventoryItems,
+                gamePhase,
+                roomAssetKey,
+                availableActions,
+                puzzle,
+                flags,
+                miniGame,
+                miniGameOutcome,
+                menu,
+                save,
+                boss,
+                ending,
+                creator,
+                logs,
+                nextSystemMessage,
+                nextErrorMessage
+        );
+    }
+
     public record PuzzleView(
             String id,
             String prompt,
@@ -83,6 +123,66 @@ public record GameSnapshot(
             List<String> rewardItems,
             Map<String, Boolean> flags,
             Map<String, Object> details
+    ) {
+    }
+
+    public record MenuView(
+            boolean hasAnySave,
+            boolean creatorModeUnlocked,
+            List<GameActionOption> actions
+    ) {
+    }
+
+    public record SaveView(
+            List<SaveSlotView> slots
+    ) {
+    }
+
+    public record SaveSlotView(
+            String saveId,
+            boolean exists,
+            String currentRoomId,
+            String roomTitle,
+            String gamePhase,
+            long savedAt
+    ) {
+    }
+
+    public record BossView(
+            String bossId,
+            String name,
+            int hp,
+            int maxHp,
+            String phase,
+            List<String> traits,
+            List<String> battleLogs,
+            List<GameActionOption> actions
+    ) {
+    }
+
+    public record EndingView(
+            String endingId,
+            String title,
+            String text,
+            String assetKey,
+            boolean creatorModeUnlocked,
+            List<GameActionOption> actions
+    ) {
+    }
+
+    public record CreatorView(
+            boolean unlocked,
+            List<CreatorChapterSummary> chapters,
+            List<String> validationErrors,
+            List<GameActionOption> actions
+    ) {
+    }
+
+    public record CreatorChapterSummary(
+            String chapterId,
+            String title,
+            String author,
+            int rooms
     ) {
     }
 }

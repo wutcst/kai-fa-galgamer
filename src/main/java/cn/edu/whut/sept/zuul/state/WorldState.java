@@ -31,6 +31,24 @@ public class WorldState {
         return next;
     }
 
+    public synchronized Map<String, Integer> counters() {
+        return Collections.unmodifiableMap(new HashMap<>(counters));
+    }
+
+    public synchronized void replaceFlags(Map<String, Boolean> nextFlags) {
+        flags.clear();
+        if (nextFlags != null) {
+            flags.putAll(nextFlags);
+        }
+    }
+
+    public synchronized void replaceCounters(Map<String, Integer> nextCounters) {
+        counters.clear();
+        if (nextCounters != null) {
+            counters.putAll(nextCounters);
+        }
+    }
+
     public synchronized Map<String, Boolean> flags() {
         return Collections.unmodifiableMap(new HashMap<>(flags));
     }

@@ -6,3 +6,6 @@
 *.iml
 .DS_Store
 /.vscode
+/data/saves/
+backend-dev.log
+frontend/frontend-dev.log
