@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 const ITEM_DETAILS = {
   blank_dice: {
@@ -72,13 +72,8 @@ function InventoryModal({ inventoryItems = [], assets, loading, onAction, onClos
     [inventoryItems],
   )
   const [selectedId, setSelectedId] = useState(items[0]?.id ?? '')
-  const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null
-
-  useEffect(() => {
-    if (!selected || !items.some((item) => item.id === selected.id)) {
-      setSelectedId(items[0]?.id ?? '')
-    }
-  }, [items, selected])
+  const activeSelectedId = items.some((item) => item.id === selectedId) ? selectedId : items[0]?.id
+  const selected = items.find((item) => item.id === activeSelectedId) ?? null
 
   const handleCraft = () => {
     onAction({

@@ -12,9 +12,9 @@ async function request(config) {
     return response.data
   } catch (error) {
     if (error.response) {
-      throw new Error(`HTTP ${error.response.status}`)
+      throw new Error(`HTTP ${error.response.status}`, { cause: error })
     }
-    throw new Error(error.message || '网络请求失败')
+    throw new Error(error.message || '网络请求失败', { cause: error })
   }
 }
 
