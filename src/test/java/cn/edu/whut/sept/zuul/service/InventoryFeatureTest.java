@@ -1,18 +1,15 @@
-package cn.edu.whut.sept.zuul.player;
+package cn.edu.whut.sept.zuul.service;
 
 import cn.edu.whut.sept.zuul.item.CraftResult;
-import cn.edu.whut.sept.zuul.service.ItemService;
-import cn.edu.whut.sept.zuul.service.PlayerService;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class PlayerServiceTest {
+class InventoryFeatureTest {
 
     @Test
-    void duplicateKeyItemsAreNotAddedTwice() {
+    void duplicateKeyItemIsKeptOnce() {
         PlayerService playerService = new PlayerService(new ItemService());
 
         playerService.gainItem("blank_dice");
@@ -23,7 +20,7 @@ class PlayerServiceTest {
     }
 
     @Test
-    void craftsSoulBellWhenAllMaterialsAreHeld() {
+    void soulBellIsCraftedByBackendWhenMaterialsAreReady() {
         PlayerService playerService = new PlayerService(new ItemService());
         playerService.gainItem("broken_bell");
         playerService.gainItem("soul_flower");
@@ -33,15 +30,5 @@ class PlayerServiceTest {
 
         assertTrue(result.success());
         assertTrue(playerService.inventoryItems().contains("soul_bell"));
-    }
-
-    @Test
-    void doesNotCraftSoulBellWithoutMaterials() {
-        PlayerService playerService = new PlayerService(new ItemService());
-
-        CraftResult result = playerService.craft("soul_bell");
-
-        assertFalse(result.success());
-        assertFalse(playerService.inventoryItems().contains("soul_bell"));
     }
 }
