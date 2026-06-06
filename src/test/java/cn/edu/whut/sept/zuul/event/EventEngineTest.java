@@ -35,7 +35,10 @@ class EventEngineTest {
         assertEquals(EventResultType.MESSAGE, second.type());
         assertTrue(worldState.getBoolean("memory_shard"));
         assertTrue(worldState.getBoolean("event_completed.broken_shelf_event"));
-        assertEquals(2, playerService.inventoryItems().size());
+        assertEquals(3, playerService.inventoryItems().size());
+        assertTrue(playerService.inventoryItems().contains("blank_dice"));
+        assertTrue(playerService.inventoryItems().contains("nameless_badge"));
+        assertTrue(playerService.inventoryItems().contains("boss_truth"));
     }
 
     @Test

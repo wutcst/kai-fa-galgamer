@@ -47,13 +47,16 @@ public record GameSnapshot(
         @Schema(description = "主菜单视图。非主菜单阶段为 null。", nullable = true)
         MenuView menu,
 
-        @Schema(description = "存档视图。没有打开存档面板时为 null。", nullable = true)
+        @Schema(description = "存档视图。", nullable = true)
         SaveView save,
 
-        @Schema(description = "Boss 战视图。非 Boss 阶段为 null。", nullable = true)
-        BossView boss,
+        @Schema(description = "当前 Boss 战状态。没有战斗时为 null。", nullable = true)
+        BattleView battle,
 
-        @Schema(description = "结局视图。非结局阶段为 null。", nullable = true)
+        @ArraySchema(schema = @Schema(implementation = ChoiceView.class))
+        List<ChoiceView> choices,
+
+        @Schema(description = "已选择的结局。没有结局时为 null。", nullable = true)
         EndingView ending,
 
         @Schema(description = "创作者模式视图。非创作者模式为 null。", nullable = true)
@@ -84,7 +87,8 @@ public record GameSnapshot(
                 miniGameOutcome,
                 menu,
                 save,
-                boss,
+                battle,
+                choices,
                 ending,
                 creator,
                 logs,
@@ -148,25 +152,36 @@ public record GameSnapshot(
     ) {
     }
 
-    public record BossView(
-            String bossId,
-            String name,
-            int hp,
-            int maxHp,
-            String phase,
+    public record BattleView(
+            String enemyId,
+            String enemyName,
+            int enemyHp,
+            int enemyMaxHp,
+            int phase,
+            int turn,
+            int playerGuard,
+            int rolledBonus,
             List<String> traits,
-            List<String> battleLogs,
-            List<GameActionOption> actions
+            String lastAction,
+            String message,
+            String assetKey
+    ) {
+    }
+
+    public record ChoiceView(
+            int number,
+            String id,
+            String label,
+            String description,
+            boolean unlocked
     ) {
     }
 
     public record EndingView(
-            String endingId,
+            String id,
             String title,
-            String text,
-            String assetKey,
-            boolean creatorModeUnlocked,
-            List<GameActionOption> actions
+            String description,
+            String assetKey
     ) {
     }
 

@@ -9,7 +9,7 @@ public enum GamePhase {
     PUZZLE,
     MINIGAME,
     CRAFTING,
-    BOSS,
+    BATTLE,
     ENDING,
     CREATOR
 }

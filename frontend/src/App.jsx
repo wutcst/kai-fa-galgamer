@@ -21,7 +21,8 @@ const fallbackSnapshot = {
   miniGameOutcome: null,
   menu: null,
   save: { slots: [] },
-  boss: null,
+  battle: null,
+  choices: [],
   ending: null,
   creator: null,
   flags: {},
@@ -96,10 +97,10 @@ function App() {
     <>
       {snapshot.gamePhase === 'MAIN_MENU' ? (
         <MainMenu snapshot={snapshot} assets={assets} loading={loading} onAction={handleAction} />
-      ) : snapshot.gamePhase === 'ENDING' ? (
-        <EndingPanel snapshot={snapshot} assets={assets} loading={loading} onAction={handleAction} />
       ) : snapshot.gamePhase === 'CREATOR' ? (
         <CreatorMode snapshot={snapshot} loading={loading} onSnapshot={setSnapshot} onAction={handleAction} />
+      ) : snapshot.gamePhase === 'ENDING' && snapshot.ending && !snapshot.choices?.length ? (
+        <EndingPanel snapshot={snapshot} assets={assets} loading={loading} onAction={handleAction} />
       ) : (
         <GameScreen
           snapshot={snapshot}

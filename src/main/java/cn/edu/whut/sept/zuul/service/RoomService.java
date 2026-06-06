@@ -2,24 +2,22 @@ package cn.edu.whut.sept.zuul.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import cn.edu.whut.sept.zuul.battle.BattleService;
-import cn.edu.whut.sept.zuul.creator.CustomChapterService;
-import cn.edu.whut.sept.zuul.ending.EndingService;
 import cn.edu.whut.sept.zuul.event.EventEngine;
 import cn.edu.whut.sept.zuul.event.EventResult;
+import cn.edu.whut.sept.zuul.item.CraftResult;
+import cn.edu.whut.sept.zuul.minigame.MiniGameService;
 import cn.edu.whut.sept.zuul.model.Direction;
 import cn.edu.whut.sept.zuul.model.GameActionOption;
 import cn.edu.whut.sept.zuul.model.GameActionRequest;
 import cn.edu.whut.sept.zuul.model.GamePhase;
 import cn.edu.whut.sept.zuul.model.GameSnapshot;
 import cn.edu.whut.sept.zuul.model.Room;
-import cn.edu.whut.sept.zuul.item.CraftResult;
-import cn.edu.whut.sept.zuul.minigame.MiniGameService;
+import cn.edu.whut.sept.zuul.creator.CustomChapterService;
 import cn.edu.whut.sept.zuul.puzzle.PuzzleEngine;
 import cn.edu.whut.sept.zuul.puzzle.PuzzleResult;
 import cn.edu.whut.sept.zuul.save.BossSaveData;
 import cn.edu.whut.sept.zuul.save.EndingSaveData;
-import cn.edu.whut.sept.zuul.save.GameSaveData;
+import cn.edu.whut.sept.zuul.save.ProfileState;
 import cn.edu.whut.sept.zuul.save.SaveManager;
 import cn.edu.whut.sept.zuul.save.SaveStateAccess;
 import cn.edu.whut.sept.zuul.state.WorldState;
@@ -63,9 +61,9 @@ public class RoomService {
     private final PuzzleEngine puzzleEngine;
     private final EventEngine eventEngine;
     private final MiniGameService miniGameService;
-    private final SaveManager saveManager;
     private final BattleService battleService;
     private final EndingService endingService;
+    private final SaveManager saveManager;
     private final CustomChapterService customChapterService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, Room> rooms = createRooms();
@@ -76,25 +74,35 @@ public class RoomService {
 
     @Autowired
     public RoomService(PlayerService playerService, WorldState worldState, PuzzleEngine puzzleEngine,
-                       EventEngine eventEngine, MiniGameService miniGameService, SaveManager saveManager,
-                       BattleService battleService, EndingService endingService, CustomChapterService customChapterService) {
+                       EventEngine eventEngine, MiniGameService miniGameService, BattleService battleService,
+                       EndingService endingService, SaveManager saveManager, CustomChapterService customChapterService) {
         this.playerService = playerService;
         this.worldState = worldState;
         this.puzzleEngine = puzzleEngine;
         this.eventEngine = eventEngine;
         this.miniGameService = miniGameService;
-        this.saveManager = saveManager;
         this.battleService = battleService;
         this.endingService = endingService;
+        this.saveManager = saveManager;
         this.customChapterService = customChapterService;
     }
 
     RoomService(PlayerService playerService, WorldState worldState, PuzzleEngine puzzleEngine,
                 EventEngine eventEngine, MiniGameService miniGameService) {
         this(playerService, worldState, puzzleEngine, eventEngine, miniGameService,
-                new SaveManager(new cn.edu.whut.sept.zuul.save.SaveService()),
                 new BattleService(),
-                new EndingService(new cn.edu.whut.sept.zuul.save.SaveService()),
+                new EndingService(),
+                new SaveManager(new cn.edu.whut.sept.zuul.save.SaveService()),
+                new CustomChapterService(new cn.edu.whut.sept.zuul.save.SaveService()));
+    }
+
+    RoomService(PlayerService playerService, WorldState worldState, PuzzleEngine puzzleEngine,
+                EventEngine eventEngine, MiniGameService miniGameService, BattleService battleService,
+                EndingService endingService) {
+        this(playerService, worldState, puzzleEngine, eventEngine, miniGameService,
+                battleService,
+                endingService,
+                new SaveManager(new cn.edu.whut.sept.zuul.save.SaveService()),
                 new CustomChapterService(new cn.edu.whut.sept.zuul.save.SaveService()));
     }
 
@@ -105,8 +113,8 @@ public class RoomService {
         playerService.reset();
         worldState.reset();
         miniGameService.reset();
-        battleService.clear();
-        endingService.clear();
+        battleService.reset();
+        endingService.reset();
         creatorValidationErrors = List.of();
         return snapshot("新游戏已初始化。你在命运大厅醒来。", null);
     }
@@ -151,20 +159,10 @@ public class RoomService {
         if (phase == GamePhase.MAIN_MENU) {
             return snapshot("动作未执行。", "请先从主菜单开始或继续游戏。");
         }
-        if (phase == GamePhase.ENDING) {
-            if ("FINAL_CHOICE".equals(actionType)) {
-                endingService.resolve(request.target(), playerService, worldState);
-                phase = GamePhase.ENDING;
-                return snapshot("最终选择已写入命运核心。", null);
-            }
-            return snapshot("动作未执行。", "结局阶段只允许最终选择或返回主菜单。");
+        if (phase == GamePhase.CREATOR) {
+            return snapshot("动作未执行。", "Creator Mode 中请使用 Creator 操作或返回新游戏。");
         }
-        if (phase == GamePhase.BOSS) {
-            if ("BOSS_ACTION".equals(actionType)) {
-                return bossAction(request.target());
-            }
-            return snapshot("动作未执行。", "Boss 战中只允许战斗行动。");
-        }
+
         if ("ACK_MINI_GAME_RESULT".equals(actionType)) {
             return snapshot(miniGameService.acknowledge(playerService, worldState), null);
         }
@@ -174,6 +172,28 @@ public class RoomService {
         if (miniGameService.hasActiveMiniGame() || miniGameService.hasPendingOutcome()) {
             return snapshot("小游戏尚未结束。", "请先完成或确认小游戏结果。");
         }
+        if ("BATTLE_ACTION".equals(actionType) || "BOSS_ACTION".equals(actionType)) {
+            String battleAction = request.value();
+            if (battleAction == null || battleAction.isBlank()) {
+                battleAction = request.target();
+            }
+            if ((battleAction == null || battleAction.isBlank()) && request.payload().get("action") instanceof String payloadAction) {
+                battleAction = payloadAction;
+            }
+            return snapshot(battleService.perform(battleAction, playerService, worldState), null);
+        }
+        if (battleService.hasActiveBattle()) {
+            return snapshot("Boss 战尚未结束。", "请先完成当前 Boss 战。");
+        }
+        if ("CHOOSE_ENDING".equals(actionType) || "FINAL_CHOICE".equals(actionType)) {
+            String choiceId = request.target();
+            if ((choiceId == null || choiceId.isBlank()) && request.payload().get("choiceId") instanceof String payloadChoice) {
+                choiceId = payloadChoice;
+            }
+            String message = endingService.choose(choiceId, playerService, worldState);
+            persistCreatorUnlockIfNeeded();
+            return snapshot(message, null);
+        }
 
         return switch (actionType) {
             case "MOVE" -> move(request.target());
@@ -181,6 +201,7 @@ public class RoomService {
             case "INSPECT" -> inspect();
             case "ANSWER" -> answer(request.target(), request.value());
             case "CRAFT" -> craft(request.target());
+            case "START_BATTLE" -> startBattle();
             default -> snapshot("动作未执行。", "当前阶段暂不支持动作：" + request.actionType());
         };
     }
@@ -214,20 +235,6 @@ public class RoomService {
                 .orElseGet(() -> snapshot("没有可继续的存档。", "请先开始新游戏。"));
     }
 
-    private GameSnapshot bossAction(String action) {
-        BattleService.BattleResult result = battleService.act(action, playerService, worldState);
-        if (result.victory()) {
-            endingService.prepareFinalChoice(playerService);
-            battleService.clear();
-            phase = GamePhase.ENDING;
-        } else if (result.defeat()) {
-            endingService.resolve("inherit_throne", playerService, worldState);
-            battleService.clear();
-            phase = GamePhase.ENDING;
-        }
-        return snapshot(result.message(), null);
-    }
-
     private GameSnapshot validateCreatorPayload(Map<String, Object> payload) {
         JsonNode chapter = objectMapper.valueToTree(payload == null ? Map.of() : payload.getOrDefault("chapter", payload));
         creatorValidationErrors = customChapterService.validate(chapter);
@@ -237,7 +244,7 @@ public class RoomService {
 
     private GameSnapshot playCreatorChapter(String chapterId) {
         phase = GamePhase.CREATOR;
-        if (!customChapterService.unlocked()) {
+        if (!creatorModeUnlocked()) {
             return snapshot("Creator Mode 尚未解锁。", "完成真结局后才能试玩自定义章节。");
         }
         return customChapterService.load(chapterId)
@@ -268,11 +275,7 @@ public class RoomService {
 
         currentRoomId = targetRoomId;
         Room next = currentRoom();
-        if ("zuul_throne".equals(next.id())) {
-            phase = GamePhase.BOSS;
-            battleService.start(playerService, worldState);
-            return snapshot("你踏入祖尔王座，最终 Boss 战开始。", null);
-        }
+        phase = GamePhase.EXPLORING;
         return snapshot("你向" + direction.label() + "移动，抵达：" + next.title(), null);
     }
 
@@ -328,6 +331,14 @@ public class RoomService {
         return snapshot("合成未完成。", result.message());
     }
 
+    private GameSnapshot startBattle() {
+        if (!"zuul_throne".equals(currentRoomId)) {
+            return snapshot("战斗尚未开始。", "只有抵达祖尔王座才能挑战 Zuul Overlord。");
+        }
+        phase = GamePhase.BATTLE;
+        return snapshot(battleService.startFinalBattle(worldState), null);
+    }
+
     private GameSnapshot snapshot(String systemMessage, String errorMessage) {
         if (systemMessage != null && !systemMessage.isBlank()) {
             appendLog(systemMessage);
@@ -350,13 +361,33 @@ public class RoomService {
                 miniGameService.outcomeView(),
                 menuView(snapshotPhase),
                 saveView(),
-                bossView(snapshotPhase),
-                endingView(snapshotPhase),
+                battleService.view(),
+                endingService.availableChoices(playerService, worldState),
+                endingService.endingView(),
                 creatorView(snapshotPhase),
                 List.copyOf(logs),
                 systemMessage,
                 errorMessage
         );
+    }
+
+    private GamePhase currentPhase() {
+        if (phase == GamePhase.MAIN_MENU || phase == GamePhase.CREATOR) {
+            return phase;
+        }
+        if (endingService.endingView() != null || !endingService.availableChoices(playerService, worldState).isEmpty()) {
+            return GamePhase.ENDING;
+        }
+        if (battleService.hasActiveBattle()) {
+            return GamePhase.BATTLE;
+        }
+        if (miniGameService.hasActiveMiniGame() || miniGameService.hasPendingOutcome()) {
+            return GamePhase.MINIGAME;
+        }
+        if (phase == GamePhase.PUZZLE || phase == GamePhase.CRAFTING) {
+            return phase;
+        }
+        return GamePhase.EXPLORING;
     }
 
     private Room currentRoom() {
@@ -370,24 +401,17 @@ public class RoomService {
         }
     }
 
-    private GamePhase currentPhase() {
-        if (miniGameService.hasActiveMiniGame() || miniGameService.hasPendingOutcome()) {
-            return GamePhase.MINIGAME;
-        }
-        return phase;
-    }
-
     private GameSnapshot.MenuView menuView(GamePhase snapshotPhase) {
         if (snapshotPhase != GamePhase.MAIN_MENU) {
             return null;
         }
         return new GameSnapshot.MenuView(
                 saveManager.saveService().hasAnySave(),
-                endingService.creatorModeUnlocked(),
+                creatorModeUnlocked(),
                 List.of(
                         new GameActionOption("NEW_GAME", "新游戏", "", false),
                         new GameActionOption("CONTINUE", "继续游戏", "", false),
-                        new GameActionOption("CREATOR_LIST", endingService.creatorModeUnlocked() ? "Creator Mode" : "Creator Mode（未解锁）", "", false)
+                        new GameActionOption("CREATOR_LIST", creatorModeUnlocked() ? "Creator Mode" : "Creator Mode（未解锁）", "", false)
                 )
         );
     }
@@ -406,48 +430,12 @@ public class RoomService {
         return new GameSnapshot.SaveView(slots);
     }
 
-    private GameSnapshot.BossView bossView(GamePhase snapshotPhase) {
-        if (snapshotPhase != GamePhase.BOSS || battleService.activeBoss() == null) {
-            return null;
-        }
-        var boss = battleService.activeBoss();
-        return new GameSnapshot.BossView(
-                boss.bossId(),
-                boss.name(),
-                boss.hp(),
-                boss.maxHp(),
-                boss.phase(),
-                worldState.getBoolean("boss.weakened_by_soul_bell") ? List.of("灵魂之铃削弱") : List.of("命运骰护甲"),
-                boss.logs().stream().skip(Math.max(0, boss.logs().size() - 5)).toList(),
-                List.of(
-                        new GameActionOption("BOSS_ACTION", "攻击", "attack", false),
-                        new GameActionOption("BOSS_ACTION", "防御", "defend", false),
-                        new GameActionOption("BOSS_ACTION", "使用灵魂之铃", "use_soul_bell", false)
-                )
-        );
-    }
-
-    private GameSnapshot.EndingView endingView(GamePhase snapshotPhase) {
-        if (snapshotPhase != GamePhase.ENDING || endingService.activeEnding() == null) {
-            return null;
-        }
-        var ending = endingService.activeEnding();
-        return new GameSnapshot.EndingView(
-                ending.endingId(),
-                ending.title(),
-                ending.text(),
-                ending.assetKey(),
-                ending.creatorModeUnlocked(),
-                ending.actions()
-        );
-    }
-
     private GameSnapshot.CreatorView creatorView(GamePhase snapshotPhase) {
         if (snapshotPhase != GamePhase.CREATOR) {
             return null;
         }
         return new GameSnapshot.CreatorView(
-                customChapterService.unlocked(),
+                creatorModeUnlocked(),
                 customChapterService.listChapters(),
                 creatorValidationErrors,
                 List.of(
@@ -460,29 +448,36 @@ public class RoomService {
 
     private List<GameActionOption> availableActions(Room room) {
         List<GameActionOption> actions = new ArrayList<>();
-        if (phase == GamePhase.MAIN_MENU) {
+        GamePhase snapshotPhase = currentPhase();
+        if (snapshotPhase == GamePhase.MAIN_MENU) {
             actions.add(new GameActionOption("NEW_GAME", "新游戏", "", false));
             actions.add(new GameActionOption("CONTINUE", "继续游戏", "", false));
             actions.add(new GameActionOption("CREATOR_LIST", "Creator Mode", "", false));
             return actions;
         }
-        if (phase == GamePhase.BOSS) {
-            actions.add(new GameActionOption("BOSS_ACTION", "攻击", "attack", false));
-            actions.add(new GameActionOption("BOSS_ACTION", "防御", "defend", false));
-            actions.add(new GameActionOption("BOSS_ACTION", "使用灵魂之铃", "use_soul_bell", false));
-            actions.add(new GameActionOption("SAVE", "保存游戏", "slot_1", false));
-            return actions;
-        }
-        if (phase == GamePhase.ENDING) {
-            if (endingService.activeEnding() != null) {
-                actions.addAll(endingService.activeEnding().actions());
-            }
-            return actions;
-        }
-        if (phase == GamePhase.CREATOR) {
+        if (snapshotPhase == GamePhase.CREATOR) {
             actions.add(new GameActionOption("CREATOR_VALIDATE", "校验章节 JSON", "", true));
             actions.add(new GameActionOption("CREATOR_PLAY", "试玩章节", "", true));
             actions.add(new GameActionOption("NEW_GAME", "返回新游戏", "", false));
+            return actions;
+        }
+        if (endingService.endingView() != null) {
+            actions.add(new GameActionOption("NEW_GAME", "返回新游戏", "", false));
+            if (creatorModeUnlocked()) {
+                actions.add(new GameActionOption("CREATOR_LIST", "进入 Creator Mode", "", false));
+            }
+            return actions;
+        }
+        if (battleService.hasActiveBattle()) {
+            actions.add(new GameActionOption("BATTLE_ACTION", "攻击", "attack", false));
+            actions.add(new GameActionOption("BATTLE_ACTION", "防御", "defend", false));
+            actions.add(new GameActionOption("BATTLE_ACTION", "掷命运骰", "roll", false));
+            actions.add(new GameActionOption("BATTLE_ACTION", "敲响灵魂之铃", "use_soul_bell", false));
+            actions.add(new GameActionOption("SAVE", "保存游戏", "slot_1", false));
+            return actions;
+        }
+        if (!endingService.availableChoices(playerService, worldState).isEmpty()) {
+            actions.add(new GameActionOption("CHOOSE_ENDING", "选择结局", "", true));
             return actions;
         }
         room.exits().entrySet().stream()
@@ -502,6 +497,9 @@ public class RoomService {
         if ("alchemy_workshop".equals(room.id())) {
             actions.add(new GameActionOption("CRAFT", "合成灵魂之铃", ItemService.SOUL_BELL, false));
         }
+        if ("zuul_throne".equals(room.id()) && !worldState.getBoolean("final_boss_defeated")) {
+            actions.add(new GameActionOption("START_BATTLE", "挑战 Zuul Overlord", "zuul_overlord", false));
+        }
         if (miniGameService.hasActiveMiniGame()) {
             actions.add(new GameActionOption("MINI_GAME_INPUT", "操作小游戏", "", false));
         }
@@ -511,6 +509,21 @@ public class RoomService {
         actions.add(new GameActionOption("SAVE", "保存游戏", "slot_1", false));
         actions.add(new GameActionOption("LOAD", "读取游戏", "slot_1", false));
         return actions;
+    }
+
+    private boolean creatorModeUnlocked() {
+        return worldState.getBoolean("creator_mode_unlocked") || saveManager.saveService().loadProfile().isCreatorModeUnlocked();
+    }
+
+    private void persistCreatorUnlockIfNeeded() {
+        if (!worldState.getBoolean("creator_mode_unlocked")) {
+            return;
+        }
+        ProfileState profile = saveManager.saveService().loadProfile();
+        profile.setCreatorModeUnlocked(true);
+        profile.setCycleBroken(worldState.getBoolean("cycle_broken"));
+        profile.getCompletedEndings().add("write_own_chapter");
+        saveManager.saveService().saveProfile(profile);
     }
 
     private boolean canMove(String roomId, Direction direction) {
@@ -619,12 +632,12 @@ public class RoomService {
 
             @Override
             public BossSaveData bossForSave() {
-                return battleService.saveData();
+                return null;
             }
 
             @Override
             public EndingSaveData endingForSave() {
-                return endingService.saveData();
+                return null;
             }
 
             @Override
@@ -651,14 +664,20 @@ public class RoomService {
             @Override
             public void restoreTransientState(BossSaveData bossState, EndingSaveData endingState) {
                 miniGameService.reset();
-                battleService.restore(bossState);
-                endingService.restore(endingState);
+                battleService.reset();
+                endingService.reset();
                 creatorValidationErrors = List.of();
             }
 
             @Override
             public void restorePhase(GamePhase restoredPhase) {
-                phase = restoredPhase == null || restoredPhase == GamePhase.MINIGAME ? GamePhase.EXPLORING : restoredPhase;
+                if (restoredPhase == GamePhase.MAIN_MENU || restoredPhase == GamePhase.CREATOR) {
+                    phase = restoredPhase;
+                    return;
+                }
+                phase = restoredPhase == null || restoredPhase == GamePhase.MINIGAME || restoredPhase == GamePhase.BATTLE
+                        ? GamePhase.EXPLORING
+                        : restoredPhase;
             }
         };
     }

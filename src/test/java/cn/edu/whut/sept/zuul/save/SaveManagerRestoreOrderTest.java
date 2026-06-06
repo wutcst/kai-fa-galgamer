@@ -59,7 +59,7 @@ class SaveManagerRestoreOrderTest {
 
         @Override
         public GamePhase phaseForSave() {
-            return GamePhase.BOSS;
+            return GamePhase.BATTLE;
         }
 
         @Override
