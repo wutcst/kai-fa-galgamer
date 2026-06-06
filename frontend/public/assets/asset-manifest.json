@@ -13,5 +13,14 @@
   "scene.alchemy_workshop": "/assets/scenes/alchemy-workshop.png",
   "scene.triple_seal_gate": "/assets/scenes/triple-seal-gate.png",
   "scene.zuul_throne": "/assets/scenes/zuul-throne.png",
-  "map.world": "/assets/maps/world-overview.png"
+  "map.world": "/assets/maps/world-overview.png",
+  "item.blank_dice": "/assets/items/blank_dice.png",
+  "item.savebreaker_key": "/assets/items/savebreaker_key.png",
+  "item.nameless_badge": "/assets/items/nameless_badge.png",
+  "item.pure_seed": "/assets/items/pure_seed.png",
+  "item.throne_fragment": "/assets/items/throne_fragment.png",
+  "item.soul_bell": "/assets/items/soul_bell.png",
+  "item.broken_bell": "/assets/items/broken_bell.png",
+  "item.soul_flower": "/assets/items/soul_flower.png",
+  "item.silver_thread": "/assets/items/silver_thread.png"
 }

@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import DirectionButtons from './DirectionButtons'
+import InventoryModal from './InventoryModal'
 
 function GameScreen({ snapshot, assets, loading, onAction }) {
+  const [inventoryOpen, setInventoryOpen] = useState(false)
   const sceneUrl = assets[snapshot.roomAssetKey] ?? assets.fallback
-  const utilityActions = snapshot.availableActions.filter((action) => action.actionType !== 'MOVE')
+  const utilityActions = snapshot.availableActions.filter((action) => action.actionType !== 'MOVE' && action.actionType !== 'CRAFT')
 
   return (
     <main className="game-screen">
@@ -19,6 +22,10 @@ function GameScreen({ snapshot, assets, loading, onAction }) {
           <strong>{snapshot.playerHp}</strong>
         </div>
         <div className="phase-panel">{snapshot.gamePhase}</div>
+        <button className="inventory-hud-button" type="button" onClick={() => setInventoryOpen(true)}>
+          背包
+          <strong>{snapshot.inventoryItems?.length ?? 0}</strong>
+        </button>
       </header>
 
       <section className="narrative-layout">
@@ -63,6 +70,16 @@ function GameScreen({ snapshot, assets, loading, onAction }) {
           ))}
         </ul>
       </aside>
+
+      {inventoryOpen ? (
+        <InventoryModal
+          inventoryItems={snapshot.inventoryItems}
+          assets={assets}
+          loading={loading}
+          onAction={onAction}
+          onClose={() => setInventoryOpen(false)}
+        />
+      ) : null}
     </main>
   )
 }
