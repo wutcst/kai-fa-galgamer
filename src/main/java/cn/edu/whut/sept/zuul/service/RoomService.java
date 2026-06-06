@@ -6,6 +6,8 @@ import cn.edu.whut.sept.zuul.model.GameActionRequest;
 import cn.edu.whut.sept.zuul.model.GamePhase;
 import cn.edu.whut.sept.zuul.model.GameSnapshot;
 import cn.edu.whut.sept.zuul.model.Room;
+import cn.edu.whut.sept.zuul.item.CraftResult;
+import cn.edu.whut.sept.zuul.item.ItemGainResult;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -20,14 +22,29 @@ public class RoomService {
 
     private static final String START_ROOM_ID = "fate_hall";
     private static final int MAX_LOG_SIZE = 6;
+    private static final Map<String, List<String>> INSPECT_REWARDS = Map.of(
+            "broken_shelf", List.of("blank_dice"),
+            "broken_mirror_room", List.of("savebreaker_key"),
+            "triple_seal_gate", List.of("nameless_badge"),
+            "soul_garden", List.of("pure_seed"),
+            "zuul_throne", List.of("throne_fragment"),
+            "material_storage", List.of("broken_bell", "silver_thread"),
+            "whisper_pool", List.of("soul_flower")
+    );
 
+    private final PlayerService playerService;
     private final Map<String, Room> rooms = createRooms();
     private final List<String> logs = new ArrayList<>();
     private String currentRoomId = START_ROOM_ID;
 
+    public RoomService(PlayerService playerService) {
+        this.playerService = playerService;
+    }
+
     public synchronized GameSnapshot initGame() {
         currentRoomId = START_ROOM_ID;
         logs.clear();
+        playerService.reset();
         return snapshot("新游戏已初始化。你在命运大厅醒来。", null);
     }
 
@@ -40,6 +57,7 @@ public class RoomService {
             case "MOVE" -> move(request.target());
             case "LOOK" -> look();
             case "INSPECT" -> inspect();
+            case "CRAFT" -> craft(request.target());
             default -> snapshot("动作未执行。", "当前阶段暂不支持动作：" + request.actionType());
         };
     }
@@ -82,7 +100,23 @@ public class RoomService {
 
     private GameSnapshot inspect() {
         Room room = currentRoom();
-        return snapshot("调查结果：" + room.inspectText(), null);
+        List<String> rewardItemIds = INSPECT_REWARDS.getOrDefault(room.id(), List.of());
+        if (rewardItemIds.isEmpty()) {
+            return snapshot("调查结果：" + room.inspectText(), null);
+        }
+
+        List<ItemGainResult> results = playerService.gainItems(rewardItemIds);
+        String rewardMessage = String.join("；", results.stream().map(ItemGainResult::message).toList());
+        return snapshot("调查结果：" + room.inspectText() + " " + rewardMessage, null);
+    }
+
+    private GameSnapshot craft(String target) {
+        String itemId = target == null || target.isBlank() ? ItemService.SOUL_BELL : target;
+        CraftResult result = playerService.craft(itemId);
+        if (result.success()) {
+            return snapshot(result.message(), null);
+        }
+        return snapshot("合成未完成。", result.message());
     }
 
     private GameSnapshot snapshot(String systemMessage, String errorMessage) {
@@ -95,8 +129,8 @@ public class RoomService {
                 room.id(),
                 room.title(),
                 room.description(),
-                100,
-                List.of(),
+                playerService.hp(),
+                playerService.inventoryItems(),
                 GamePhase.EXPLORING,
                 room.assetKey(),
                 availableActions(room),
@@ -129,6 +163,9 @@ public class RoomService {
                 )));
         actions.add(new GameActionOption("LOOK", "查看四周", room.id(), false));
         actions.add(new GameActionOption("INSPECT", "调查线索", room.id(), false));
+        if ("alchemy_workshop".equals(room.id())) {
+            actions.add(new GameActionOption("CRAFT", "合成灵魂之铃", ItemService.SOUL_BELL, false));
+        }
         actions.add(new GameActionOption("SAVE", "保存游戏", "slot_1", false));
         return actions;
     }
