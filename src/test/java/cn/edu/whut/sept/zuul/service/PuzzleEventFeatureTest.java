@@ -109,7 +109,9 @@ class PuzzleEventFeatureTest {
                 worldState,
                 new PuzzleEngine(new PuzzleConfig().puzzleRegistry()),
                 new EventEngine(),
-                new MiniGameService(new MiniGameRewardResolver())
+                new MiniGameService(new MiniGameRewardResolver()),
+                new BattleService(),
+                new EndingService()
         );
     }
 
