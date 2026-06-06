@@ -25,8 +25,14 @@ public record GameSnapshot(
         @Schema(description = "当前游戏阶段。", example = "EXPLORING")
         GamePhase gamePhase,
 
+        @Schema(description = "当前房间场景资源 key，前端通过 asset-manifest.json 映射到图片路径。", example = "scene.fate_hall")
+        String roomAssetKey,
+
         @ArraySchema(schema = @Schema(implementation = GameActionOption.class))
         List<GameActionOption> availableActions,
+
+        @ArraySchema(schema = @Schema(description = "最近探索日志。", example = "你向北移动，抵达：记忆图书馆"))
+        List<String> logs,
 
         @Schema(description = "普通系统消息，用于展示操作结果或剧情提示。", example = "新游戏已初始化。")
         String systemMessage,

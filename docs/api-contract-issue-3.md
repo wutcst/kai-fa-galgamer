@@ -17,11 +17,12 @@
   "playerHp": 100,
   "inventoryItems": [],
   "gamePhase": "EXPLORING",
+  "roomAssetKey": "scene.fate_hall",
   "availableActions": [
     {
       "actionType": "MOVE",
-      "label": "前往记忆图书馆",
-      "target": "memory_library",
+      "label": "前往北",
+      "target": "north",
       "requiresInput": false
     },
     {
@@ -30,6 +31,9 @@
       "target": "start_room",
       "requiresInput": false
     }
+  ],
+  "logs": [
+    "新游戏已初始化。你在命运大厅醒来。"
   ],
   "systemMessage": "新游戏已初始化。",
   "errorMessage": null
@@ -46,7 +50,9 @@
 | `playerHp` | number | 玩家生命值 |
 | `inventoryItems` | string[] | 背包物品 ID 列表 |
 | `gamePhase` | string | 当前阶段，如 `EXPLORING`、`PUZZLE`、`MINI_GAME`、`BATTLE` |
+| `roomAssetKey` | string | 当前房间场景资源 key，前端通过 `asset-manifest.json` 查找图片 |
 | `availableActions` | object[] | 前端可渲染的动作列表 |
+| `logs` | string[] | 最近探索日志 |
 | `systemMessage` | string | 普通系统消息 |
 | `errorMessage` | string/null | 错误提示，无错误时为 `null` |
 

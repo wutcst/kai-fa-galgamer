@@ -1,11 +1,10 @@
 package cn.edu.whut.sept.zuul.controller;
 
-import cn.edu.whut.sept.zuul.model.GameActionOption;
 import cn.edu.whut.sept.zuul.model.GameActionRequest;
-import cn.edu.whut.sept.zuul.model.GamePhase;
 import cn.edu.whut.sept.zuul.model.GameSnapshot;
 import cn.edu.whut.sept.zuul.model.LoadGameRequest;
 import cn.edu.whut.sept.zuul.model.SaveGameRequest;
+import cn.edu.whut.sept.zuul.service.RoomService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -18,16 +17,20 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
-@Tag(name = "游戏接口", description = "阶段 2 锁定的前后端 API 数据契约。当前返回 Mock 快照，供前端并行开发。")
+@Tag(name = "游戏接口", description = "游戏状态快照、地图探索动作、存档与读档接口。")
 @RestController
 @RequestMapping("/api/game")
 public class GameController {
 
+    private final RoomService roomService;
+
+    public GameController(RoomService roomService) {
+        this.roomService = roomService;
+    }
+
     @Operation(
             summary = "初始化游戏",
-            description = "创建新游戏或重置当前会话，并返回统一游戏状态快照 GameSnapshot。",
+            description = "创建新游戏或重置当前探索会话，并返回统一游戏状态快照 GameSnapshot。",
             responses = @ApiResponse(
                     responseCode = "200",
                     description = "初始化成功",
@@ -35,21 +38,23 @@ public class GameController {
                             schema = @Schema(implementation = GameSnapshot.class),
                             examples = @ExampleObject(name = "初始快照", value = """
                                     {
-                                      "currentRoomId": "start_room",
-                                      "roomTitle": "命运裂隙",
-                                      "roomDescription": "你在一道微光裂隙前醒来，远处传来王座钟声。",
+                                      "currentRoomId": "fate_hall",
+                                      "roomTitle": "命运大厅",
+                                      "roomDescription": "破碎石阶延伸向四条岔路，地面的六面骰纹路像仍在缓慢转动。",
                                       "playerHp": 100,
                                       "inventoryItems": [],
                                       "gamePhase": "EXPLORING",
+                                      "roomAssetKey": "scene.fate_hall",
                                       "availableActions": [
                                         {
                                           "actionType": "MOVE",
-                                          "label": "前往记忆图书馆",
-                                          "target": "memory_library",
+                                          "label": "前往北",
+                                          "target": "north",
                                           "requiresInput": false
                                         }
                                       ],
-                                      "systemMessage": "新游戏已初始化。",
+                                      "logs": ["新游戏已初始化。你在命运大厅醒来。"],
+                                      "systemMessage": "新游戏已初始化。你在命运大厅醒来。",
                                       "errorMessage": null
                                     }
                                     """)
@@ -58,7 +63,7 @@ public class GameController {
     )
     @GetMapping("/init")
     public GameSnapshot initGame() {
-        return mockSnapshot("新游戏已初始化。", null);
+        return roomService.initGame();
     }
 
     @Operation(
@@ -82,8 +87,7 @@ public class GameController {
     )
     @PostMapping("/action")
     public GameSnapshot performAction(@RequestBody GameActionRequest request) {
-        String actionType = request == null ? "UNKNOWN" : request.actionType();
-        return mockSnapshot("Mock 已接收动作：" + actionType, null);
+        return roomService.perform(request);
     }
 
     @Operation(
@@ -104,8 +108,8 @@ public class GameController {
     )
     @PostMapping("/save")
     public GameSnapshot saveGame(@RequestBody SaveGameRequest request) {
-        String saveId = request == null ? "unknown" : request.saveId();
-        return mockSnapshot("Mock 存档已保存：" + saveId, null);
+        String saveId = request == null ? "slot_1" : request.saveId();
+        return roomService.save(saveId);
     }
 
     @Operation(
@@ -126,25 +130,7 @@ public class GameController {
     )
     @PostMapping("/load")
     public GameSnapshot loadGame(@RequestBody LoadGameRequest request) {
-        String saveId = request == null ? "unknown" : request.saveId();
-        return mockSnapshot("Mock 存档已读取：" + saveId, null);
-    }
-
-    private GameSnapshot mockSnapshot(String systemMessage, String errorMessage) {
-        return new GameSnapshot(
-                "start_room",
-                "命运裂隙",
-                "你在一道微光裂隙前醒来，远处传来王座钟声。",
-                100,
-                List.of(),
-                GamePhase.EXPLORING,
-                List.of(
-                        new GameActionOption("MOVE", "前往记忆图书馆", "memory_library", false),
-                        new GameActionOption("LOOK", "查看四周", "start_room", false),
-                        new GameActionOption("SAVE", "保存游戏", "slot_1", false)
-                ),
-                systemMessage,
-                errorMessage
-        );
+        String saveId = request == null ? "slot_1" : request.saveId();
+        return roomService.load(saveId);
     }
 }

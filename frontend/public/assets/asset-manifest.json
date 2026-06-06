@@ -1,0 +1,17 @@
+{
+  "fallback": "/assets/scenes/scene-fallback.png",
+  "scene.fate_hall": "/assets/scenes/fate-hall.png",
+  "scene.memory_library": "/assets/scenes/memory-library.png",
+  "scene.broken_shelf": "/assets/scenes/memory-library.png",
+  "scene.mirror_corridor": "/assets/scenes/mirror-corridor.png",
+  "scene.broken_mirror_room": "/assets/scenes/mirror-corridor.png",
+  "scene.rune_floor": "/assets/scenes/order-altar-corrupted.png",
+  "scene.order_altar": "/assets/scenes/order-altar-corrupted.png",
+  "scene.soul_garden": "/assets/scenes/soul-garden-withered.png",
+  "scene.material_storage": "/assets/scenes/alchemy-workshop.png",
+  "scene.whisper_pool": "/assets/scenes/soul-garden-withered.png",
+  "scene.alchemy_workshop": "/assets/scenes/alchemy-workshop.png",
+  "scene.triple_seal_gate": "/assets/scenes/triple-seal-gate.png",
+  "scene.zuul_throne": "/assets/scenes/zuul-throne.png",
+  "map.world": "/assets/maps/world-overview.png"
+}
