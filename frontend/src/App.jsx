@@ -12,6 +12,8 @@ const fallbackSnapshot = {
   gamePhase: 'EXPLORING',
   roomAssetKey: 'fallback',
   availableActions: [],
+  puzzle: null,
+  flags: {},
   logs: [],
   systemMessage: '',
   errorMessage: null,

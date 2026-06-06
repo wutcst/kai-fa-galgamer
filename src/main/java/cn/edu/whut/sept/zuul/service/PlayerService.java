@@ -30,6 +30,10 @@ public class PlayerService {
         return hp;
     }
 
+    public synchronized void damage(int amount) {
+        hp = Math.max(0, hp - Math.max(0, amount));
+    }
+
     public synchronized List<String> inventoryItems() {
         return List.copyOf(inventoryItems);
     }
