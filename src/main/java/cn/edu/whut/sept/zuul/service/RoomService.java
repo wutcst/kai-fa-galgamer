@@ -52,17 +52,22 @@ public class RoomService {
     private final PuzzleEngine puzzleEngine;
     private final EventEngine eventEngine;
     private final MiniGameService miniGameService;
+    private final BattleService battleService;
+    private final EndingService endingService;
     private final Map<String, Room> rooms = createRooms();
     private final List<String> logs = new ArrayList<>();
     private String currentRoomId = START_ROOM_ID;
 
     public RoomService(PlayerService playerService, WorldState worldState, PuzzleEngine puzzleEngine,
-                       EventEngine eventEngine, MiniGameService miniGameService) {
+                       EventEngine eventEngine, MiniGameService miniGameService, BattleService battleService,
+                       EndingService endingService) {
         this.playerService = playerService;
         this.worldState = worldState;
         this.puzzleEngine = puzzleEngine;
         this.eventEngine = eventEngine;
         this.miniGameService = miniGameService;
+        this.battleService = battleService;
+        this.endingService = endingService;
     }
 
     public synchronized GameSnapshot initGame() {
@@ -71,6 +76,8 @@ public class RoomService {
         playerService.reset();
         worldState.reset();
         miniGameService.reset();
+        battleService.reset();
+        endingService.reset();
         return snapshot("新游戏已初始化。你在命运大厅醒来。", null);
     }
 
@@ -89,6 +96,26 @@ public class RoomService {
         if (miniGameService.hasActiveMiniGame() || miniGameService.hasPendingOutcome()) {
             return snapshot("小游戏尚未结束。", "请先完成或确认小游戏结果。");
         }
+        if ("BATTLE_ACTION".equals(actionType)) {
+            String battleAction = request.value();
+            if (battleAction == null || battleAction.isBlank()) {
+                battleAction = request.target();
+            }
+            if ((battleAction == null || battleAction.isBlank()) && request.payload().get("action") instanceof String payloadAction) {
+                battleAction = payloadAction;
+            }
+            return snapshot(battleService.perform(battleAction, playerService, worldState), null);
+        }
+        if (battleService.hasActiveBattle()) {
+            return snapshot("Boss 战尚未结束。", "请先完成当前 Boss 战。");
+        }
+        if ("CHOOSE_ENDING".equals(actionType)) {
+            String choiceId = request.target();
+            if ((choiceId == null || choiceId.isBlank()) && request.payload().get("choiceId") instanceof String payloadChoice) {
+                choiceId = payloadChoice;
+            }
+            return snapshot(endingService.choose(choiceId, playerService, worldState), null);
+        }
 
         return switch (actionType) {
             case "MOVE" -> move(request.target());
@@ -96,6 +123,7 @@ public class RoomService {
             case "INSPECT" -> inspect();
             case "ANSWER" -> answer(request.target(), request.value());
             case "CRAFT" -> craft(request.target());
+            case "START_BATTLE" -> startBattle();
             default -> snapshot("动作未执行。", "当前阶段暂不支持动作：" + request.actionType());
         };
     }
@@ -182,6 +210,13 @@ public class RoomService {
         return snapshot("合成未完成。", result.message());
     }
 
+    private GameSnapshot startBattle() {
+        if (!"zuul_throne".equals(currentRoomId)) {
+            return snapshot("战斗尚未开始。", "只有抵达祖尔王座才能挑战 Zuul Overlord。");
+        }
+        return snapshot(battleService.startFinalBattle(worldState), null);
+    }
+
     private GameSnapshot snapshot(String systemMessage, String errorMessage) {
         if (systemMessage != null && !systemMessage.isBlank()) {
             appendLog(systemMessage);
@@ -194,17 +229,33 @@ public class RoomService {
                 room.description(),
                 playerService.hp(),
                 playerService.inventoryItems(),
-                miniGameService.hasActiveMiniGame() || miniGameService.hasPendingOutcome() ? GamePhase.MINIGAME : GamePhase.EXPLORING,
+                currentPhase(),
                 room.assetKey(),
                 availableActions(room),
                 puzzleView(room),
                 worldState.flags(),
                 miniGameService.view(),
                 miniGameService.outcomeView(),
+                battleService.view(),
+                endingService.availableChoices(playerService, worldState),
+                endingService.endingView(),
                 List.copyOf(logs),
                 systemMessage,
                 errorMessage
         );
+    }
+
+    private GamePhase currentPhase() {
+        if (endingService.endingView() != null || !endingService.availableChoices(playerService, worldState).isEmpty()) {
+            return GamePhase.ENDING;
+        }
+        if (battleService.hasActiveBattle()) {
+            return GamePhase.BATTLE;
+        }
+        if (miniGameService.hasActiveMiniGame() || miniGameService.hasPendingOutcome()) {
+            return GamePhase.MINIGAME;
+        }
+        return GamePhase.EXPLORING;
     }
 
     private Room currentRoom() {
@@ -220,6 +271,20 @@ public class RoomService {
 
     private List<GameActionOption> availableActions(Room room) {
         List<GameActionOption> actions = new ArrayList<>();
+        if (endingService.endingView() != null) {
+            return actions;
+        }
+        if (battleService.hasActiveBattle()) {
+            actions.add(new GameActionOption("BATTLE_ACTION", "攻击", "attack", false));
+            actions.add(new GameActionOption("BATTLE_ACTION", "防御", "defend", false));
+            actions.add(new GameActionOption("BATTLE_ACTION", "掷命运骰", "roll", false));
+            actions.add(new GameActionOption("BATTLE_ACTION", "敲响灵魂之铃", "use_soul_bell", false));
+            return actions;
+        }
+        if (!endingService.availableChoices(playerService, worldState).isEmpty()) {
+            actions.add(new GameActionOption("CHOOSE_ENDING", "选择结局", "", true));
+            return actions;
+        }
         room.exits().entrySet().stream()
                 .sorted(Comparator.comparing(entry -> entry.getKey().code()))
                 .forEach(entry -> actions.add(new GameActionOption(
@@ -236,6 +301,9 @@ public class RoomService {
         }
         if ("alchemy_workshop".equals(room.id())) {
             actions.add(new GameActionOption("CRAFT", "合成灵魂之铃", ItemService.SOUL_BELL, false));
+        }
+        if ("zuul_throne".equals(room.id()) && !worldState.getBoolean("final_boss_defeated")) {
+            actions.add(new GameActionOption("START_BATTLE", "挑战 Zuul Overlord", "zuul_overlord", false));
         }
         if (miniGameService.hasActiveMiniGame()) {
             actions.add(new GameActionOption("MINI_GAME_INPUT", "操作小游戏", "", false));

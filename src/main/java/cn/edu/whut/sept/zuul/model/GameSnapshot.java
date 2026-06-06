@@ -44,6 +44,15 @@ public record GameSnapshot(
         @Schema(description = "待确认的小游戏结果。没有结果时为 null。", nullable = true)
         MiniGameOutcome miniGameOutcome,
 
+        @Schema(description = "当前 Boss 战状态。没有战斗时为 null。", nullable = true)
+        BattleView battle,
+
+        @ArraySchema(schema = @Schema(implementation = ChoiceView.class))
+        List<ChoiceView> choices,
+
+        @Schema(description = "已选择的结局。没有结局时为 null。", nullable = true)
+        EndingView ending,
+
         @ArraySchema(schema = @Schema(description = "最近探索日志。", example = "你向北移动，抵达：记忆图书馆"))
         List<String> logs,
 
@@ -83,6 +92,39 @@ public record GameSnapshot(
             List<String> rewardItems,
             Map<String, Boolean> flags,
             Map<String, Object> details
+    ) {
+    }
+
+    public record BattleView(
+            String enemyId,
+            String enemyName,
+            int enemyHp,
+            int enemyMaxHp,
+            int phase,
+            int turn,
+            int playerGuard,
+            int rolledBonus,
+            List<String> traits,
+            String lastAction,
+            String message,
+            String assetKey
+    ) {
+    }
+
+    public record ChoiceView(
+            int number,
+            String id,
+            String label,
+            String description,
+            boolean unlocked
+    ) {
+    }
+
+    public record EndingView(
+            String id,
+            String title,
+            String description,
+            String assetKey
     ) {
     }
 }
