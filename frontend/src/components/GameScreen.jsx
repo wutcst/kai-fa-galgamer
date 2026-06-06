@@ -7,7 +7,7 @@ import MiniGameOutcomePanel from './MiniGameOutcomePanel'
 import MiniGamePanel from './MiniGamePanel'
 import PuzzleModal from './PuzzleModal'
 
-function GameScreen({ snapshot, assets, loading, onAction }) {
+function GameScreen({ snapshot, assets, loading, onAction, onOpenSave }) {
   const [inventoryOpen, setInventoryOpen] = useState(false)
   const sceneUrl = assets[snapshot.roomAssetKey] ?? assets.fallback
   const puzzle = normalizePuzzle(snapshot)
@@ -83,11 +83,13 @@ function GameScreen({ snapshot, assets, loading, onAction }) {
                 type="button"
                 disabled={loading}
                 onClick={() =>
-                  onAction({
-                    actionType: action.actionType,
-                    target: action.target,
-                    value: null,
-                  })
+                  ['SAVE', 'LOAD'].includes(actionType(action)) && onOpenSave
+                    ? onOpenSave()
+                    : onAction({
+                        actionType: action.actionType,
+                        target: action.target,
+                        value: null,
+                      })
                 }
               >
                 {action.label}

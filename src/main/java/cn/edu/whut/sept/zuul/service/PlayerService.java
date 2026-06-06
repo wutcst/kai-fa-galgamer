@@ -26,6 +26,17 @@ public class PlayerService {
         inventoryItems.clear();
     }
 
+    public synchronized void restore(int restoredHp, List<String> restoredInventoryItems) {
+        hp = Math.max(0, restoredHp);
+        inventoryItems.clear();
+        if (restoredInventoryItems != null) {
+            restoredInventoryItems.stream()
+                    .filter(itemService::exists)
+                    .distinct()
+                    .forEach(inventoryItems::add);
+        }
+    }
+
     public synchronized int hp() {
         return hp;
     }

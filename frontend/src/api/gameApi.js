@@ -25,6 +25,20 @@ export function initGame() {
   })
 }
 
+export function getMenu() {
+  return request({
+    method: 'GET',
+    url: '/api/game/menu',
+  })
+}
+
+export function getState() {
+  return request({
+    method: 'GET',
+    url: '/api/game/state',
+  })
+}
+
 export function performAction(action) {
   return request({
     method: 'POST',
@@ -38,6 +52,28 @@ export function saveGame(saveId = 'slot_1') {
     method: 'POST',
     url: '/api/game/save',
     data: { saveId },
+  })
+}
+
+export function loadGame(saveId = 'slot_1') {
+  return request({
+    method: 'POST',
+    url: '/api/game/load',
+    data: { saveId },
+  })
+}
+
+export function listSaves() {
+  return request({
+    method: 'GET',
+    url: '/api/game/saves',
+  })
+}
+
+export function deleteSave(saveId) {
+  return request({
+    method: 'DELETE',
+    url: `/api/game/saves/${encodeURIComponent(saveId)}`,
   })
 }
 
