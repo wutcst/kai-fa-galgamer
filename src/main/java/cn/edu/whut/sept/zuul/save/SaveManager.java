@@ -22,6 +22,7 @@ public class SaveManager {
         data.setCurrentRoomId(access.currentRoomId());
         data.setPlayerHp(access.playerHp());
         data.setInventoryItems(access.inventoryItems());
+        data.setVisitedRoomIds(access.visitedRoomIds());
         data.setFlags(access.flags());
         data.setCounters(access.counters());
         data.setGamePhase(access.phaseForSave());
@@ -39,6 +40,7 @@ public class SaveManager {
     private void restoreInOrder(GameSaveData data, SaveStateAccess access) {
         access.restoreWorldState(data.getFlags(), data.getCounters());
         access.restoreSpatialContext(data.getCurrentRoomId());
+        access.restoreVisitedRooms(data.getVisitedRoomIds());
         access.restorePlayer(data.getPlayerHp(), data.getInventoryItems());
         access.restoreTransientState(data.getBossState(), data.getEndingState());
         access.restorePhase(data.getGamePhase());

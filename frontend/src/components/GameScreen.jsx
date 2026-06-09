@@ -2,6 +2,7 @@ import { useState } from 'react'
 import BattlePanel from './BattlePanel'
 import ChoicePanel from './ChoicePanel'
 import DirectionButtons from './DirectionButtons'
+import ExplorationMap from './ExplorationMap'
 import InventoryModal from './InventoryModal'
 import MiniGameOutcomePanel from './MiniGameOutcomePanel'
 import MiniGamePanel from './MiniGamePanel'
@@ -24,6 +25,7 @@ function GameScreen({ snapshot, assets, loading, onAction, onOpenSave }) {
     <main className="game-screen">
       <div className="scene-image" style={{ backgroundImage: `url("${sceneUrl}")` }} />
       <div className="scene-vignette" />
+      <ExplorationMap map={snapshot.map} />
 
       <header className="top-hud">
         <div className="brand-mark">

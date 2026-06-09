@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { listChapters, playChapter, saveChapter, validateChapter } from '../api/creatorApi'
-import ChapterEditor, { sampleChapterText } from './ChapterEditor'
+import ChapterEditor from './ChapterEditor'
+import { sampleChapterText } from './sampleChapter'
 
 function CreatorMode({ snapshot, loading, onSnapshot, onAction }) {
   const creator = snapshot.creator ?? {}

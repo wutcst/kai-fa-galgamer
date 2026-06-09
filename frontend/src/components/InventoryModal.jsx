@@ -55,6 +55,36 @@ const ITEM_DETAILS = {
     assetKey: 'item.silver_thread',
     keyItem: false,
   },
+  library_note: {
+    name: '禁书残页',
+    description: '从记忆图书馆脱落的残页，骰子图案旁藏着镜面谜题的线索。',
+    assetKey: 'item.library_note',
+    keyItem: false,
+  },
+  rune_clue: {
+    name: '符文线索',
+    description: '刻着方向符号的石片，青紫光痕暗示符文地板的正确序列。',
+    assetKey: 'item.rune_clue',
+    keyItem: false,
+  },
+  boss_truth: {
+    name: '祖尔真相',
+    description: '刻在破裂命运核心上的真相，揭示祖尔与循环规则之间的隐秘联系。',
+    assetKey: 'item.boss_truth',
+    keyItem: false,
+  },
+  mirror_shard: {
+    name: '镜面碎片',
+    description: '从镜面裂隙凝成的碎片，倒影里残留着被削弱的规则。',
+    assetKey: 'item.mirror_shard',
+    keyItem: false,
+  },
+  purified_ash: {
+    name: '净化灰烬',
+    description: '秩序祭坛承认正确序列后显现的银白灰烬，可净化被循环污染的材料。',
+    assetKey: 'item.purified_ash',
+    keyItem: false,
+  },
 }
 
 function InventoryModal({ inventoryItems = [], assets, loading, onAction, onClose }) {

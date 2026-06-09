@@ -30,6 +30,11 @@ class GameControllerTest {
                 .andExpect(jsonPath("$.gamePhase").value("EXPLORING"))
                 .andExpect(jsonPath("$.roomAssetKey").value("scene.fate_hall"))
                 .andExpect(jsonPath("$.availableActions[0].actionType").value("MOVE"))
+                .andExpect(jsonPath("$.map.rooms[0].id").value("fate_hall"))
+                .andExpect(jsonPath("$.map.rooms[0].explored").value(true))
+                .andExpect(jsonPath("$.map.rooms[0].current").value(true))
+                .andExpect(jsonPath("$.map.rooms[1].explored").value(false))
+                .andExpect(jsonPath("$.map.rooms[1].title").value(nullValue()))
                 .andExpect(jsonPath("$.logs[0]").value("新游戏已初始化。你在命运大厅醒来。"));
     }
 
@@ -49,6 +54,9 @@ class GameControllerTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.currentRoomId").value("memory_library"))
+                .andExpect(jsonPath("$.map.rooms[0].explored").value(true))
+                .andExpect(jsonPath("$.map.rooms[1].explored").value(true))
+                .andExpect(jsonPath("$.map.rooms[1].title").value("记忆图书馆"))
                 .andExpect(jsonPath("$.systemMessage").value("你向北移动，抵达：记忆图书馆"))
                 .andExpect(jsonPath("$.errorMessage").value(nullValue()));
     }

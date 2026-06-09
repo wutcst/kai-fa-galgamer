@@ -62,6 +62,9 @@ public record GameSnapshot(
         @Schema(description = "创作者模式视图。非创作者模式为 null。", nullable = true)
         CreatorView creator,
 
+        @Schema(description = "探索地图视图。")
+        WorldMapView map,
+
         @ArraySchema(schema = @Schema(description = "最近探索日志。", example = "你向北移动，抵达：记忆图书馆"))
         List<String> logs,
 
@@ -91,6 +94,7 @@ public record GameSnapshot(
                 choices,
                 ending,
                 creator,
+                map,
                 logs,
                 nextSystemMessage,
                 nextErrorMessage
@@ -198,6 +202,31 @@ public record GameSnapshot(
             String title,
             String author,
             int rooms
+    ) {
+    }
+
+    public record WorldMapView(
+            List<MapRoomView> rooms,
+            List<MapExitView> exits
+    ) {
+    }
+
+    public record MapRoomView(
+            String id,
+            String title,
+            int x,
+            int y,
+            boolean explored,
+            boolean current,
+            boolean adjacentToCurrent
+    ) {
+    }
+
+    public record MapExitView(
+            String from,
+            String to,
+            String direction,
+            boolean locked
     ) {
     }
 }
