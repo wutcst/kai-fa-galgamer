@@ -26,7 +26,7 @@ class SaveManagerRestoreOrderTest {
         RecordingAccess target = new RecordingAccess();
         saveManager.load("slot_1", target);
 
-        assertEquals(List.of("world", "spatial", "player", "transient", "phase"), target.calls);
+        assertEquals(List.of("world", "spatial", "visited", "player", "transient", "phase"), target.calls);
     }
 
     private static class RecordingAccess implements SaveStateAccess {
@@ -45,6 +45,11 @@ class SaveManagerRestoreOrderTest {
         @Override
         public List<String> inventoryItems() {
             return List.of("blank_dice");
+        }
+
+        @Override
+        public List<String> visitedRoomIds() {
+            return List.of("fate_hall");
         }
 
         @Override
@@ -85,6 +90,11 @@ class SaveManagerRestoreOrderTest {
         @Override
         public void restoreSpatialContext(String currentRoomId) {
             calls.add("spatial");
+        }
+
+        @Override
+        public void restoreVisitedRooms(List<String> visitedRoomIds) {
+            calls.add("visited");
         }
 
         @Override

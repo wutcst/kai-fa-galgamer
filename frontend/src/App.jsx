@@ -26,6 +26,7 @@ const fallbackSnapshot = {
   ending: null,
   creator: null,
   flags: {},
+  map: { rooms: [], exits: [] },
   logs: [],
   systemMessage: '',
   errorMessage: null,

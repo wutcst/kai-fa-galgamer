@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -55,6 +56,21 @@ public class RoomService {
             "order_altar_event", "dice_check",
             "garden_event", "link_match"
     );
+    private static final Map<String, RoomMapPoint> ROOM_MAP_POINTS = Map.ofEntries(
+            Map.entry("fate_hall", new RoomMapPoint(50, 35)),
+            Map.entry("memory_library", new RoomMapPoint(50, 15)),
+            Map.entry("broken_shelf", new RoomMapPoint(30, 15)),
+            Map.entry("mirror_corridor", new RoomMapPoint(75, 35)),
+            Map.entry("broken_mirror_room", new RoomMapPoint(75, 15)),
+            Map.entry("rune_floor", new RoomMapPoint(50, 55)),
+            Map.entry("order_altar", new RoomMapPoint(50, 70)),
+            Map.entry("soul_garden", new RoomMapPoint(50, 85)),
+            Map.entry("material_storage", new RoomMapPoint(30, 85)),
+            Map.entry("whisper_pool", new RoomMapPoint(70, 85)),
+            Map.entry("alchemy_workshop", new RoomMapPoint(25, 35)),
+            Map.entry("triple_seal_gate", new RoomMapPoint(25, 55)),
+            Map.entry("zuul_throne", new RoomMapPoint(25, 75))
+    );
 
     private final PlayerService playerService;
     private final WorldState worldState;
@@ -68,6 +84,7 @@ public class RoomService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, Room> rooms = createRooms();
     private final List<String> logs = new ArrayList<>();
+    private final LinkedHashSet<String> visitedRoomIds = new LinkedHashSet<>();
     private String currentRoomId = START_ROOM_ID;
     private GamePhase phase = GamePhase.MAIN_MENU;
     private List<String> creatorValidationErrors = List.of();
@@ -110,6 +127,8 @@ public class RoomService {
         currentRoomId = START_ROOM_ID;
         phase = GamePhase.EXPLORING;
         logs.clear();
+        visitedRoomIds.clear();
+        visitedRoomIds.add(START_ROOM_ID);
         playerService.reset();
         worldState.reset();
         miniGameService.reset();
@@ -274,6 +293,7 @@ public class RoomService {
         }
 
         currentRoomId = targetRoomId;
+        visitedRoomIds.add(targetRoomId);
         Room next = currentRoom();
         phase = GamePhase.EXPLORING;
         return snapshot("你向" + direction.label() + "移动，抵达：" + next.title(), null);
@@ -365,6 +385,7 @@ public class RoomService {
                 endingService.availableChoices(playerService, worldState),
                 endingService.endingView(),
                 creatorView(snapshotPhase),
+                mapView(),
                 List.copyOf(logs),
                 systemMessage,
                 errorMessage
@@ -444,6 +465,36 @@ public class RoomService {
                         new GameActionOption("NEW_GAME", "返回新游戏", "", false)
                 )
         );
+    }
+
+    private GameSnapshot.WorldMapView mapView() {
+        Room current = currentRoom();
+        List<String> adjacentRoomIds = List.copyOf(current.exits().values());
+        List<GameSnapshot.MapRoomView> roomViews = rooms.values().stream()
+                .map(room -> {
+                    RoomMapPoint point = ROOM_MAP_POINTS.getOrDefault(room.id(), new RoomMapPoint(50, 50));
+                    boolean explored = visitedRoomIds.contains(room.id());
+                    return new GameSnapshot.MapRoomView(
+                            room.id(),
+                            explored ? room.title() : null,
+                            point.x(),
+                            point.y(),
+                            explored,
+                            room.id().equals(currentRoomId),
+                            adjacentRoomIds.contains(room.id())
+                    );
+                })
+                .toList();
+        List<GameSnapshot.MapExitView> exitViews = rooms.values().stream()
+                .flatMap(room -> room.exits().entrySet().stream()
+                        .map(entry -> new GameSnapshot.MapExitView(
+                                room.id(),
+                                entry.getValue(),
+                                entry.getKey().code(),
+                                !canMove(room.id(), entry.getKey())
+                        )))
+                .toList();
+        return new GameSnapshot.WorldMapView(roomViews, exitViews);
     }
 
     private List<GameActionOption> availableActions(Room room) {
@@ -616,6 +667,11 @@ public class RoomService {
             }
 
             @Override
+            public List<String> visitedRoomIds() {
+                return List.copyOf(visitedRoomIds);
+            }
+
+            @Override
             public Map<String, Boolean> flags() {
                 return worldState.flags();
             }
@@ -654,6 +710,20 @@ public class RoomService {
             @Override
             public void restoreSpatialContext(String restoredRoomId) {
                 currentRoomId = rooms.containsKey(restoredRoomId) ? restoredRoomId : START_ROOM_ID;
+            }
+
+            @Override
+            public void restoreVisitedRooms(List<String> restoredVisitedRoomIds) {
+                visitedRoomIds.clear();
+                if (restoredVisitedRoomIds != null) {
+                    restoredVisitedRoomIds.stream()
+                            .filter(rooms::containsKey)
+                            .forEach(visitedRoomIds::add);
+                }
+                if (visitedRoomIds.isEmpty()) {
+                    visitedRoomIds.add(START_ROOM_ID);
+                }
+                visitedRoomIds.add(currentRoomId);
             }
 
             @Override
@@ -771,5 +841,8 @@ public class RoomService {
 
     private static void add(Map<String, Room> map, Room room) {
         map.put(room.id(), room);
+    }
+
+    private record RoomMapPoint(int x, int y) {
     }
 }

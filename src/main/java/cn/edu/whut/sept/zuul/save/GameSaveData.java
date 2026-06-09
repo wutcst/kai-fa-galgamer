@@ -9,11 +9,12 @@ import java.util.Map;
 
 public class GameSaveData {
 
-    private int schemaVersion = 1;
+    private int schemaVersion = 2;
     private String saveId = "slot_1";
     private String currentRoomId = "fate_hall";
     private int playerHp = 100;
     private List<String> inventoryItems = new ArrayList<>();
+    private List<String> visitedRoomIds = new ArrayList<>();
     private Map<String, Boolean> flags = new HashMap<>();
     private Map<String, Integer> counters = new HashMap<>();
     private GamePhase gamePhase = GamePhase.EXPLORING;
@@ -59,6 +60,14 @@ public class GameSaveData {
 
     public void setInventoryItems(List<String> inventoryItems) {
         this.inventoryItems = inventoryItems == null ? new ArrayList<>() : new ArrayList<>(inventoryItems);
+    }
+
+    public List<String> getVisitedRoomIds() {
+        return visitedRoomIds;
+    }
+
+    public void setVisitedRoomIds(List<String> visitedRoomIds) {
+        this.visitedRoomIds = visitedRoomIds == null ? new ArrayList<>() : new ArrayList<>(visitedRoomIds);
     }
 
     public Map<String, Boolean> getFlags() {

@@ -13,6 +13,8 @@ public interface SaveStateAccess {
 
     List<String> inventoryItems();
 
+    List<String> visitedRoomIds();
+
     Map<String, Boolean> flags();
 
     Map<String, Integer> counters();
@@ -28,6 +30,8 @@ public interface SaveStateAccess {
     void restoreWorldState(Map<String, Boolean> flags, Map<String, Integer> counters);
 
     void restoreSpatialContext(String currentRoomId);
+
+    void restoreVisitedRooms(List<String> visitedRoomIds);
 
     void restorePlayer(int hp, List<String> inventoryItems);
 
