@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getMenu, initGame, loadAssetManifest, loadGame, performAction, saveGame } from './api/gameApi'
 import CreatorMode from './components/CreatorMode'
 import EndingPanel from './components/EndingPanel'
+import FailurePanel from './components/FailurePanel'
 import GameScreen from './components/GameScreen'
 import MainMenu from './components/MainMenu'
 import SaveModal from './components/SaveModal'
@@ -24,6 +25,7 @@ const fallbackSnapshot = {
   battle: null,
   choices: [],
   ending: null,
+  failure: null,
   creator: null,
   flags: {},
   map: { rooms: [], exits: [] },
@@ -102,6 +104,8 @@ function App() {
         <CreatorMode snapshot={snapshot} loading={loading} onSnapshot={setSnapshot} onAction={handleAction} />
       ) : snapshot.gamePhase === 'ENDING' && snapshot.ending && !snapshot.choices?.length ? (
         <EndingPanel snapshot={snapshot} assets={assets} loading={loading} onAction={handleAction} />
+      ) : snapshot.gamePhase === 'GAME_OVER' ? (
+        <FailurePanel snapshot={snapshot} assets={assets} loading={loading} onAction={handleAction} />
       ) : (
         <GameScreen
           snapshot={snapshot}

@@ -175,6 +175,9 @@ public class RoomService {
         if ("CREATOR_PLAY".equals(actionType)) {
             return playCreatorChapter(request.target());
         }
+        if ("ACK_GAME_OVER".equals(actionType)) {
+            return acknowledgeGameOver();
+        }
         if (phase == GamePhase.MAIN_MENU) {
             return snapshot("动作未执行。", "请先从主菜单开始或继续游戏。");
         }
@@ -184,6 +187,13 @@ public class RoomService {
 
         if ("ACK_MINI_GAME_RESULT".equals(actionType)) {
             return snapshot(miniGameService.acknowledge(playerService, worldState), null);
+        }
+        if ("RESCUE_MINI_GAME_RESULT".equals(actionType)) {
+            String rescueId = request.value();
+            if ((rescueId == null || rescueId.isBlank()) && request.payload().get("rescueId") instanceof String payloadRescueId) {
+                rescueId = payloadRescueId;
+            }
+            return snapshot(miniGameService.rescuePendingOutcome(request.target(), rescueId, playerService), null);
         }
         if ("MINI_GAME_INPUT".equals(actionType)) {
             return snapshot(miniGameService.handleInput(request.target(), request.value(), request.payload()), null);
@@ -199,7 +209,13 @@ public class RoomService {
             if ((battleAction == null || battleAction.isBlank()) && request.payload().get("action") instanceof String payloadAction) {
                 battleAction = payloadAction;
             }
-            return snapshot(battleService.perform(battleAction, playerService, worldState), null);
+            String message = battleService.perform(battleAction, playerService, worldState);
+            if (playerService.hp() <= 0 || worldState.getBoolean("final_boss_lost")) {
+                battleService.reset();
+                phase = GamePhase.GAME_OVER;
+                return snapshot(message, null);
+            }
+            return snapshot(message, null);
         }
         if (battleService.hasActiveBattle()) {
             return snapshot("Boss 战尚未结束。", "请先完成当前 Boss 战。");
@@ -359,6 +375,14 @@ public class RoomService {
         return snapshot(battleService.startFinalBattle(worldState), null);
     }
 
+    private GameSnapshot acknowledgeGameOver() {
+        battleService.reset();
+        miniGameService.reset();
+        endingService.reset();
+        phase = GamePhase.MAIN_MENU;
+        return snapshot("循环回到起点。", null);
+    }
+
     private GameSnapshot snapshot(String systemMessage, String errorMessage) {
         if (systemMessage != null && !systemMessage.isBlank()) {
             appendLog(systemMessage);
@@ -378,13 +402,14 @@ public class RoomService {
                 puzzleView(room),
                 worldState.flags(),
                 miniGameService.view(),
-                miniGameService.outcomeView(),
+                miniGameService.outcomeView(playerService),
                 menuView(snapshotPhase),
                 saveView(),
                 battleService.view(),
                 endingService.availableChoices(playerService, worldState),
                 endingService.endingView(),
                 creatorView(snapshotPhase),
+                failureView(snapshotPhase),
                 mapView(),
                 List.copyOf(logs),
                 systemMessage,
@@ -393,7 +418,7 @@ public class RoomService {
     }
 
     private GamePhase currentPhase() {
-        if (phase == GamePhase.MAIN_MENU || phase == GamePhase.CREATOR) {
+        if (phase == GamePhase.MAIN_MENU || phase == GamePhase.CREATOR || phase == GamePhase.GAME_OVER) {
             return phase;
         }
         if (endingService.endingView() != null || !endingService.availableChoices(playerService, worldState).isEmpty()) {
@@ -467,6 +492,18 @@ public class RoomService {
         );
     }
 
+    private GameSnapshot.FailureView failureView(GamePhase snapshotPhase) {
+        if (snapshotPhase != GamePhase.GAME_OVER) {
+            return null;
+        }
+        return new GameSnapshot.FailureView(
+                "循环崩塌",
+                "你倒在祖尔王座前，命运核心把失败的回声重新卷回起点。",
+                "ending.boss_failure",
+                List.of(new GameActionOption("ACK_GAME_OVER", "确认失败", "", false))
+        );
+    }
+
     private GameSnapshot.WorldMapView mapView() {
         Room current = currentRoom();
         List<String> adjacentRoomIds = List.copyOf(current.exits().values());
@@ -510,6 +547,10 @@ public class RoomService {
             actions.add(new GameActionOption("CREATOR_VALIDATE", "校验章节 JSON", "", true));
             actions.add(new GameActionOption("CREATOR_PLAY", "试玩章节", "", true));
             actions.add(new GameActionOption("NEW_GAME", "返回新游戏", "", false));
+            return actions;
+        }
+        if (snapshotPhase == GamePhase.GAME_OVER) {
+            actions.add(new GameActionOption("ACK_GAME_OVER", "确认失败", "", false));
             return actions;
         }
         if (endingService.endingView() != null) {
@@ -688,7 +729,7 @@ public class RoomService {
 
             @Override
             public BossSaveData bossForSave() {
-                return null;
+                return battleService.saveData();
             }
 
             @Override
@@ -734,7 +775,7 @@ public class RoomService {
             @Override
             public void restoreTransientState(BossSaveData bossState, EndingSaveData endingState) {
                 miniGameService.reset();
-                battleService.reset();
+                battleService.restore(bossState);
                 endingService.reset();
                 creatorValidationErrors = List.of();
             }
@@ -743,6 +784,10 @@ public class RoomService {
             public void restorePhase(GamePhase restoredPhase) {
                 if (restoredPhase == GamePhase.MAIN_MENU || restoredPhase == GamePhase.CREATOR) {
                     phase = restoredPhase;
+                    return;
+                }
+                if (restoredPhase == GamePhase.BATTLE && battleService.hasActiveBattle()) {
+                    phase = GamePhase.BATTLE;
                     return;
                 }
                 phase = restoredPhase == null || restoredPhase == GamePhase.MINIGAME || restoredPhase == GamePhase.BATTLE

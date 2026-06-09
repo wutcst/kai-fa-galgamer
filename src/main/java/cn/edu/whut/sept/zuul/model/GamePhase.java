@@ -10,6 +10,7 @@ public enum GamePhase {
     MINIGAME,
     CRAFTING,
     BATTLE,
+    GAME_OVER,
     ENDING,
     CREATOR
 }

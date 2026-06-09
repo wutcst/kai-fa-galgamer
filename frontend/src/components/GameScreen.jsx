@@ -65,7 +65,7 @@ function GameScreen({ snapshot, assets, loading, onAction, onOpenSave }) {
           <ChoicePanel snapshot={snapshot} assets={assets} loading={loading} onAction={onAction} />
         ) : null}
         {!inBattle && !inChoice && snapshot.miniGameOutcome ? (
-          <MiniGameOutcomePanel outcome={snapshot.miniGameOutcome} loading={loading} onAction={onAction} />
+          <MiniGameOutcomePanel outcome={snapshot.miniGameOutcome} assets={assets} loading={loading} onAction={onAction} />
         ) : null}
         {!inBattle && !inChoice && !snapshot.miniGameOutcome && snapshot.miniGame ? (
           <MiniGamePanel miniGame={snapshot.miniGame} assets={assets} loading={loading} onAction={onAction} />

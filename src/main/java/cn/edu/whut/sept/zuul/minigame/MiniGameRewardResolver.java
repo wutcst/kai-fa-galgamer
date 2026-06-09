@@ -37,7 +37,10 @@ public class MiniGameRewardResolver {
         switch (eventId) {
             case "mirror_room_event" -> {
                 flags.put("mirror_success", true);
-                if (type == MiniGameResultType.GREAT_SUCCESS) {
+                if (type == MiniGameResultType.RESCUED_BY_ITEM) {
+                    items.add("savebreaker_key");
+                    message = "你以灵魂反噬砸碎镜面，断档之钥从裂隙中坠落。";
+                } else if (type == MiniGameResultType.GREAT_SUCCESS) {
                     items.add("mirror_shard");
                     items.add("savebreaker_key");
                     message = "点数完美抵达二十一，断档之钥从镜面裂隙中落下。";
@@ -60,7 +63,10 @@ public class MiniGameRewardResolver {
             case "garden_event" -> {
                 flags.put("soul_shard", true);
                 flags.put("garden_restored", true);
-                if (type == MiniGameResultType.GREAT_SUCCESS) {
+                if (type == MiniGameResultType.RESCUED_BY_ITEM) {
+                    items.add("pure_seed");
+                    message = "材料化作灌溉的灵光，纯净种子在枯土中被强行唤醒。";
+                } else if (type == MiniGameResultType.GREAT_SUCCESS) {
                     items.add("soul_flower");
                     items.add("pure_seed");
                     message = "所有符文被连通，纯净种子在灵魂花园中苏醒。";
