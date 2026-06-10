@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class SaveManagerRestoreOrderTest {
 
@@ -27,10 +28,13 @@ class SaveManagerRestoreOrderTest {
         saveManager.load("slot_1", target);
 
         assertEquals(List.of("world", "spatial", "visited", "player", "transient", "phase"), target.calls);
+        assertNotNull(target.restoredBossState);
+        assertEquals("CORE_CHARGE", target.restoredBossState.getCurrentIntent());
     }
 
     private static class RecordingAccess implements SaveStateAccess {
         private final List<String> calls = new ArrayList<>();
+        private BossSaveData restoredBossState;
 
         @Override
         public String currentRoomId() {
@@ -69,7 +73,13 @@ class SaveManagerRestoreOrderTest {
 
         @Override
         public BossSaveData bossForSave() {
-            return null;
+            BossSaveData data = new BossSaveData();
+            data.setHp(77);
+            data.setMaxHp(120);
+            data.setCurrentIntent("CORE_CHARGE");
+            data.setTurn(4);
+            data.setSoulBellCooldown(1);
+            return data;
         }
 
         @Override
@@ -105,6 +115,7 @@ class SaveManagerRestoreOrderTest {
         @Override
         public void restoreTransientState(BossSaveData bossState, EndingSaveData endingState) {
             calls.add("transient");
+            restoredBossState = bossState;
         }
 
         @Override

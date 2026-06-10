@@ -12,8 +12,27 @@
   backdrop-filter: blur(14px);
 }
 
+.loading-mask {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.loading-mask img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  animation: fate-spin 1.1s linear infinite;
+}
+
 .global-error {
   left: 22px;
   right: auto;
   color: #ffb4a8;
+}
+
+@keyframes fate-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

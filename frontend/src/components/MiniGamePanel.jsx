@@ -39,6 +39,7 @@ function PointPanel({ miniGame, assets, loading, onAction }) {
     <section className="minigame-panel point-panel" style={{ backgroundImage: `url("${bg}")` }}>
       <MiniGameHeader miniGame={miniGame} title="镜面点数" />
       <div className="point-total">{state.total ?? 0}</div>
+      <p className="minigame-message">17 至 21 点即可稳定花色；爆点后可通过后端救赎路径补救。</p>
       <div className="card-row">
         {cards.length ? cards.map((card, index) => <span className="point-card" key={`${index}-${card}`}>{card}</span>) : <span className="point-card is-empty">?</span>}
       </div>
@@ -56,6 +57,11 @@ function LinkMatchPanel({ miniGame, assets, loading, onAction }) {
   const tiles = Array.isArray(state.board) ? state.board : []
   const gridSize = useMemo(() => Math.sqrt(tiles.length || 16), [tiles.length])
   const bg = assets['minigame.link.bg'] ?? assets.fallback
+  const lastPath = Array.isArray(state.lastPath) ? state.lastPath : []
+  const moves = Number(state.moves ?? 0)
+  const maxMoves = Number(state.maxMoves ?? 18)
+  const remainingPairs = Number(state.remainingPairs ?? 0)
+  const targetPairs = Number(state.targetPairs ?? 5)
 
   const choose = (tile) => {
     if (loading || tile.empty) return
@@ -75,10 +81,15 @@ function LinkMatchPanel({ miniGame, assets, loading, onAction }) {
   return (
     <section className="minigame-panel link-panel" style={{ backgroundImage: `url("${bg}")` }}>
       <MiniGameHeader miniGame={miniGame} title="符文连线" />
+      <div className="link-stats" aria-label="连连看状态">
+        <span>步数 {moves} / {maxMoves}</span>
+        <span>剩余 {remainingPairs} 对</span>
+        <span>目标 {targetPairs} 对</span>
+      </div>
       <div className="link-board" style={{ gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))` }}>
         {tiles.map((tile) => (
           <button
-            className={`link-tile ${tile.empty ? 'is-empty' : ''} ${isSelected(selected, tile) ? 'is-selected' : ''}`}
+            className={`link-tile ${tile.empty ? 'is-empty' : ''} ${isSelected(selected, tile) ? 'is-selected' : ''} ${isPathTile(lastPath, tile) ? 'is-path' : ''}`}
             key={`${tile.row}-${tile.col}`}
             disabled={loading || tile.empty}
             onClick={() => choose(tile)}
@@ -110,6 +121,10 @@ function input(onAction, miniGame, value) {
 
 function isSelected(selected, tile) {
   return selected.some((item) => item.row === tile.row && item.col === tile.col)
+}
+
+function isPathTile(path, tile) {
+  return path.some((item) => Number(item.row) === Number(tile.row) && Number(item.col) === Number(tile.col))
 }
 
 function tileAsset(assets, symbol) {

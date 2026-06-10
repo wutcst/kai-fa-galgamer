@@ -45,6 +45,14 @@ public class PlayerService {
         hp = Math.max(0, hp - Math.max(0, amount));
     }
 
+    public synchronized void heal(int amount) {
+        hp = Math.min(INITIAL_HP, hp + Math.max(0, amount));
+    }
+
+    public synchronized boolean consumeItem(String itemId) {
+        return inventoryItems.remove(itemId);
+    }
+
     public synchronized List<String> inventoryItems() {
         return List.copyOf(inventoryItems);
     }

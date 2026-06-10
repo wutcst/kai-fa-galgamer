@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-function PuzzleModal({ puzzle, loading, onAction }) {
+function PuzzleModal({ puzzle, loading, assets, onAction }) {
   const [answer, setAnswer] = useState('')
   const freeText = Boolean(puzzle.freeText)
   const options = Array.isArray(puzzle.options) ? puzzle.options : []
@@ -36,6 +36,12 @@ function PuzzleModal({ puzzle, loading, onAction }) {
         <span>{puzzle.kind}</span>
         <h2>{puzzle.prompt}</h2>
       </div>
+
+      {puzzle.kind === 'ITEM_COMBINATION' && assets && assets['ui.craft_recipe_preview'] && (
+        <div className="craft-recipe-container">
+          <img className="craft-recipe-preview" src={assets['ui.craft_recipe_preview']} alt="合成配方" />
+        </div>
+      )}
 
       {freeText ? (
         <form

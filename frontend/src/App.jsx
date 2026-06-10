@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getMenu, initGame, loadAssetManifest, loadGame, performAction, saveGame } from './api/gameApi'
 import CreatorMode from './components/CreatorMode'
 import EndingPanel from './components/EndingPanel'
+import FailurePanel from './components/FailurePanel'
 import GameScreen from './components/GameScreen'
 import MainMenu from './components/MainMenu'
 import SaveModal from './components/SaveModal'
@@ -15,6 +16,7 @@ const fallbackSnapshot = {
   inventoryItems: [],
   gamePhase: 'MAIN_MENU',
   roomAssetKey: 'fallback',
+  dialogue: null,
   availableActions: [],
   puzzle: null,
   miniGame: null,
@@ -24,6 +26,7 @@ const fallbackSnapshot = {
   battle: null,
   choices: [],
   ending: null,
+  failure: null,
   creator: null,
   flags: {},
   map: { rooms: [], exits: [] },
@@ -102,6 +105,8 @@ function App() {
         <CreatorMode snapshot={snapshot} loading={loading} onSnapshot={setSnapshot} onAction={handleAction} />
       ) : snapshot.gamePhase === 'ENDING' && snapshot.ending && !snapshot.choices?.length ? (
         <EndingPanel snapshot={snapshot} assets={assets} loading={loading} onAction={handleAction} />
+      ) : snapshot.gamePhase === 'GAME_OVER' ? (
+        <FailurePanel snapshot={snapshot} assets={assets} loading={loading} onAction={handleAction} />
       ) : (
         <GameScreen
           snapshot={snapshot}
@@ -112,7 +117,12 @@ function App() {
         />
       )}
       {saveOpen ? <SaveModal snapshot={snapshot} loading={loading} onAction={handleAction} onClose={() => setSaveOpen(false)} /> : null}
-      {loading ? <div className="loading-mask">命运骰正在转动...</div> : null}
+      {loading ? (
+        <div className="loading-mask">
+          {assets['ui.loading_spinner'] ? <img src={assets['ui.loading_spinner']} alt="" /> : null}
+          <span>命运骰正在转动...</span>
+        </div>
+      ) : null}
       {error ? <div className="global-error">{error}</div> : null}
     </>
   )

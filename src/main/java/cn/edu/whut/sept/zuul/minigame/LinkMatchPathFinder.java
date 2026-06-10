@@ -2,7 +2,6 @@ package cn.edu.whut.sept.zuul.minigame;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -79,28 +78,6 @@ public class LinkMatchPathFinder {
             }
         }
         return false;
-    }
-
-    public String[][] deterministicReshuffle(String[][] board) {
-        List<String> symbols = new ArrayList<>();
-        for (String[] row : board) {
-            for (String symbol : row) {
-                if (symbol != null) {
-                    symbols.add(symbol);
-                }
-            }
-        }
-        symbols.sort(Comparator.naturalOrder());
-        String[][] next = new String[board.length][board[0].length];
-        int index = 0;
-        for (int row = 0; row < next.length; row++) {
-            for (int col = 0; col < next[row].length; col++) {
-                if (board[row][col] != null) {
-                    next[row][col] = symbols.get(index++ % symbols.size());
-                }
-            }
-        }
-        return next;
     }
 
     private boolean validTile(String[][] board, int row, int col) {

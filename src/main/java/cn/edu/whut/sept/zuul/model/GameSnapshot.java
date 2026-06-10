@@ -29,6 +29,9 @@ public record GameSnapshot(
         @Schema(description = "当前房间场景资源 key。", example = "scene.fate_hall")
         String roomAssetKey,
 
+        @Schema(description = "当前 ADV 对话视图。没有挂起对话时为 null。", nullable = true)
+        DialogueView dialogue,
+
         @ArraySchema(schema = @Schema(implementation = GameActionOption.class))
         List<GameActionOption> availableActions,
 
@@ -62,6 +65,9 @@ public record GameSnapshot(
         @Schema(description = "创作者模式视图。非创作者模式为 null。", nullable = true)
         CreatorView creator,
 
+        @Schema(description = "失败页面视图。非失败阶段为 null。", nullable = true)
+        FailureView failure,
+
         @Schema(description = "探索地图视图。")
         WorldMapView map,
 
@@ -83,6 +89,7 @@ public record GameSnapshot(
                 inventoryItems,
                 gamePhase,
                 roomAssetKey,
+                dialogue,
                 availableActions,
                 puzzle,
                 flags,
@@ -94,11 +101,46 @@ public record GameSnapshot(
                 choices,
                 ending,
                 creator,
+                failure,
                 map,
                 logs,
                 nextSystemMessage,
                 nextErrorMessage
         );
+    }
+
+    public record DialogueView(
+            boolean active,
+            String layout,
+            String dialogueGroupId,
+            String currentNodeId,
+            String nodeType,
+            String text,
+            String speakerSide,
+            String speakerName,
+            String audioSfx,
+            DialogueCharacterView leftCharacter,
+            DialogueCharacterView rightCharacter,
+            List<DialogueChoiceView> choices
+    ) {
+    }
+
+    public record DialogueCharacterView(
+            String id,
+            String assetKey,
+            String expressionKey,
+            boolean isSpeaking
+    ) {
+    }
+
+    public record DialogueChoiceView(
+            String choiceId,
+            String text,
+            boolean available,
+            double confidence,
+            String lockedReason,
+            String nextNodeId
+    ) {
     }
 
     public record PuzzleView(
@@ -130,7 +172,17 @@ public record GameSnapshot(
             String message,
             List<String> rewardItems,
             Map<String, Boolean> flags,
-            Map<String, Object> details
+            Map<String, Object> details,
+            List<RescueOption> rescueOptions
+    ) {
+    }
+
+    public record RescueOption(
+            String id,
+            String label,
+            String description,
+            String cost,
+            String assetKey
     ) {
     }
 
@@ -168,7 +220,16 @@ public record GameSnapshot(
             List<String> traits,
             String lastAction,
             String message,
-            String assetKey
+            String assetKey,
+            String currentIntent,
+            String intentLabel,
+            String intentDescription,
+            String intentAssetKey,
+            int d100Result,
+            int d100Step,
+            boolean bonusDieApplied,
+            int soulBellCooldown,
+            List<String> battleHints
     ) {
     }
 
@@ -202,6 +263,14 @@ public record GameSnapshot(
             String title,
             String author,
             int rooms
+    ) {
+    }
+
+    public record FailureView(
+            String title,
+            String description,
+            String assetKey,
+            List<GameActionOption> actions
     ) {
     }
 

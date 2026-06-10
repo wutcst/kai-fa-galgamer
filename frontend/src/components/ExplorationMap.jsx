@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 const EMPTY_ROOMS = []
 const EMPTY_EXITS = []
 
-function ExplorationMap({ map }) {
+function ExplorationMap({ map, assets = {} }) {
   const [expanded, setExpanded] = useState(false)
   const rooms = map?.rooms ?? EMPTY_ROOMS
   const exits = map?.exits ?? EMPTY_EXITS
@@ -37,7 +37,7 @@ function ExplorationMap({ map }) {
     <>
       <button className="exploration-map-toggle" type="button" onClick={() => setExpanded(true)}>
         <span className="map-chip">探索地图</span>
-        <MapCanvas rooms={rooms} exits={exits} roomLookup={roomLookup} visibleRoomIds={miniRoomIds} compact />
+        <MapCanvas rooms={rooms} exits={exits} roomLookup={roomLookup} visibleRoomIds={miniRoomIds} assets={assets} compact />
       </button>
 
       {expanded ? (
@@ -52,7 +52,7 @@ function ExplorationMap({ map }) {
                 X
               </button>
             </header>
-            <MapCanvas rooms={rooms} exits={exits} roomLookup={roomLookup} />
+            <MapCanvas rooms={rooms} exits={exits} roomLookup={roomLookup} assets={assets} />
           </section>
         </div>
       ) : null}
@@ -60,7 +60,8 @@ function ExplorationMap({ map }) {
   )
 }
 
-function MapCanvas({ rooms, exits, roomLookup, visibleRoomIds, compact = false }) {
+function MapCanvas({ rooms, exits, roomLookup, visibleRoomIds, assets = {}, compact = false }) {
+  const mapTexture = assets['ui.minimap_fog_texture']
   const visibleRooms = visibleRoomIds ? rooms.filter((room) => visibleRoomIds.has(room.id)) : rooms
   const visibleIds = new Set(visibleRooms.map((room) => room.id))
   const visibleExits = uniqueExits(
@@ -78,7 +79,10 @@ function MapCanvas({ rooms, exits, roomLookup, visibleRoomIds, compact = false }
   )
 
   return (
-    <div className={compact ? 'map-canvas map-canvas-compact' : 'map-canvas'}>
+    <div
+      className={compact ? 'map-canvas map-canvas-compact' : 'map-canvas'}
+      style={mapTexture ? { backgroundImage: `url("${mapTexture}")` } : undefined}
+    >
       <svg className="map-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
         {visibleExits.map((exit) => {
           const from = roomLookup.get(exit.from)
