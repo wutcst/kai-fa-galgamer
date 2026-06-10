@@ -3,7 +3,9 @@ package cn.edu.whut.sept.zuul.creator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import cn.edu.whut.sept.zuul.dialogue.DialogueEngine;
 import cn.edu.whut.sept.zuul.model.GameSnapshot;
+import cn.edu.whut.sept.zuul.service.ItemService;
 import cn.edu.whut.sept.zuul.save.SaveService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -24,10 +26,14 @@ import java.util.stream.Stream;
 public class CustomChapterService {
 
     private static final Set<String> EVENT_TYPES = Set.of("story", "reward", "minigame", "battle", "puzzle", "setFlag", "ending");
+    private static final Set<String> DIALOGUE_NODE_TYPES = Set.of("SPEECH", "CHOICE", "EVENT_TRIGGER");
+    private static final Set<String> CONDITION_TYPES = Set.of("HAS_ITEM", "HP_GREATER_THAN", "WORLD_FLAG_EQUALS");
+    private static final Set<String> EFFECT_TYPES = Set.of("GAIN_HP", "LOSE_HP", "GAIN_ITEM", "LOSE_ITEM", "SET_FLAG", "BYPASS_PUZZLE");
 
     private final Path chaptersDirectory;
     private final ObjectMapper objectMapper;
     private final SaveService saveService;
+    private final ItemService itemService = new ItemService();
 
     @Autowired
     public CustomChapterService(SaveService saveService) {
@@ -109,6 +115,7 @@ public class CustomChapterService {
                 });
             }
             validateEvent(roomId, room.get("event"), errors);
+            validateDialogue(roomId, room.get("dialogue"), errors);
         }
         return errors;
     }
@@ -182,6 +189,134 @@ public class CustomChapterService {
         }
         if ("battle".equals(type) && event.get("enemy") == null) {
             errors.add("房间 " + roomId + " 的 battle.enemy 必填。");
+        }
+    }
+
+    private void validateDialogue(String roomId, JsonNode dialogue, List<String> errors) {
+        if (dialogue == null || dialogue.isNull()) {
+            return;
+        }
+        if (!dialogue.isObject()) {
+            errors.add("房间 " + roomId + " 的 dialogue 必须是对象。");
+            return;
+        }
+        String groupId = text(dialogue, "dialogueGroupId");
+        String startNodeId = text(dialogue, "startNodeId");
+        JsonNode nodes = dialogue.get("nodes");
+        if (groupId.isBlank()) {
+            errors.add("房间 " + roomId + " 的 dialogue.dialogueGroupId 必填。");
+        }
+        if (startNodeId.isBlank()) {
+            errors.add("房间 " + roomId + " 的 dialogue.startNodeId 必填。");
+        }
+        if (nodes == null || !nodes.isObject() || nodes.isEmpty()) {
+            errors.add("房间 " + roomId + " 的 dialogue.nodes 至少需要一个节点。");
+            return;
+        }
+        if (!nodes.has(startNodeId)) {
+            errors.add("房间 " + roomId + " 的 dialogue.startNodeId 指向不存在节点：" + startNodeId);
+        }
+
+        Set<String> nodeIds = new HashSet<>();
+        nodes.fieldNames().forEachRemaining(nodeIds::add);
+        Set<String> reachable = new HashSet<>();
+        validateDialogueNode(roomId, startNodeId, nodes, nodeIds, reachable, errors);
+        for (String nodeId : nodeIds) {
+            if (!reachable.contains(nodeId)) {
+                errors.add("房间 " + roomId + " 的 dialogue 存在孤岛节点：" + nodeId);
+            }
+        }
+    }
+
+    private void validateDialogueNode(String roomId, String nodeId, JsonNode nodes, Set<String> nodeIds,
+                                      Set<String> reachable, List<String> errors) {
+        if (nodeId == null || nodeId.isBlank() || DialogueEngine.EXIT.equals(nodeId) || !reachable.add(nodeId)) {
+            return;
+        }
+        JsonNode node = nodes.get(nodeId);
+        if (node == null || !node.isObject()) {
+            errors.add("房间 " + roomId + " 的 dialogue 节点不存在：" + nodeId);
+            return;
+        }
+        String type = text(node, "type").toUpperCase();
+        if (!DIALOGUE_NODE_TYPES.contains(type)) {
+            errors.add("房间 " + roomId + " 的 dialogue 节点 " + nodeId + " 使用非法类型：" + text(node, "type"));
+            return;
+        }
+        if ("CHOICE".equals(type)) {
+            validateChoiceNode(roomId, nodeId, node, nodes, nodeIds, reachable, errors);
+            return;
+        }
+        String nextNodeId = text(node, "nextNodeId");
+        if (nextNodeId.isBlank()) {
+            errors.add("房间 " + roomId + " 的 dialogue 节点 " + nodeId + " 缺少 nextNodeId。");
+            return;
+        }
+        if (!DialogueEngine.EXIT.equals(nextNodeId) && !nodeIds.contains(nextNodeId)) {
+            errors.add("房间 " + roomId + " 的 dialogue 节点 " + nodeId + " 指向不存在节点：" + nextNodeId);
+            return;
+        }
+        validateDialogueNode(roomId, nextNodeId, nodes, nodeIds, reachable, errors);
+    }
+
+    private void validateChoiceNode(String roomId, String nodeId, JsonNode node, JsonNode nodes, Set<String> nodeIds,
+                                    Set<String> reachable, List<String> errors) {
+        JsonNode choices = node.get("choices");
+        if (choices == null || !choices.isArray() || choices.isEmpty()) {
+            errors.add("房间 " + roomId + " 的 CHOICE 节点 " + nodeId + " 至少需要一个 choices[]。");
+            return;
+        }
+        int index = 0;
+        for (JsonNode choice : choices) {
+            String choicePath = nodeId + ".choices[" + index + "]";
+            String nextNodeId = text(choice, "nextNodeId");
+            if (nextNodeId.isBlank()) {
+                errors.add("房间 " + roomId + " 的 " + choicePath + " 缺少 nextNodeId。");
+            } else if (!DialogueEngine.EXIT.equals(nextNodeId) && !nodeIds.contains(nextNodeId)) {
+                errors.add("房间 " + roomId + " 的 " + choicePath + " 指向不存在节点：" + nextNodeId);
+            }
+            validateConditions(roomId, choicePath, choice.get("conditions"), errors);
+            validateEffects(roomId, choicePath, choice.get("effects"), errors);
+            validateDialogueNode(roomId, nextNodeId, nodes, nodeIds, reachable, errors);
+            index++;
+        }
+    }
+
+    private void validateConditions(String roomId, String path, JsonNode conditions, List<String> errors) {
+        if (conditions == null || conditions.isNull()) {
+            return;
+        }
+        if (!conditions.isArray()) {
+            errors.add("房间 " + roomId + " 的 " + path + ".conditions 必须是数组。");
+            return;
+        }
+        for (JsonNode condition : conditions) {
+            String type = text(condition, "type").toUpperCase();
+            if (!CONDITION_TYPES.contains(type)) {
+                errors.add("房间 " + roomId + " 的 " + path + " 使用非法条件类型：" + text(condition, "type"));
+            }
+            if ("HAS_ITEM".equals(type) && !itemService.exists(text(condition, "itemKey"))) {
+                errors.add("房间 " + roomId + " 的 " + path + " 使用未知物品条件：" + text(condition, "itemKey"));
+            }
+        }
+    }
+
+    private void validateEffects(String roomId, String path, JsonNode effects, List<String> errors) {
+        if (effects == null || effects.isNull()) {
+            return;
+        }
+        if (!effects.isArray()) {
+            errors.add("房间 " + roomId + " 的 " + path + ".effects 必须是数组。");
+            return;
+        }
+        for (JsonNode effect : effects) {
+            String type = text(effect, "type").toUpperCase();
+            if (!EFFECT_TYPES.contains(type)) {
+                errors.add("房间 " + roomId + " 的 " + path + " 使用非法副作用类型：" + text(effect, "type"));
+            }
+            if (("GAIN_ITEM".equals(type) || "LOSE_ITEM".equals(type)) && !itemService.exists(text(effect, "itemKey"))) {
+                errors.add("房间 " + roomId + " 的 " + path + " 使用未知物品副作用：" + text(effect, "itemKey"));
+            }
         }
     }
 

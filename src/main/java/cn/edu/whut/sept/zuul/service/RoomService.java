@@ -2,6 +2,15 @@ package cn.edu.whut.sept.zuul.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import cn.edu.whut.sept.zuul.dialogue.DialogueConditionEvaluator;
+import cn.edu.whut.sept.zuul.dialogue.DialogueEffectExecutor;
+import cn.edu.whut.sept.zuul.dialogue.DialogueEngine;
+import cn.edu.whut.sept.zuul.dialogue.DialogueGraph;
+import cn.edu.whut.sept.zuul.dialogue.DialogueNode;
+import cn.edu.whut.sept.zuul.dialogue.DialogueCharacter;
+import cn.edu.whut.sept.zuul.dialogue.DialogueChoice;
+import cn.edu.whut.sept.zuul.dialogue.DialogueCondition;
+import cn.edu.whut.sept.zuul.dialogue.DialogueEffect;
 import cn.edu.whut.sept.zuul.event.EventEngine;
 import cn.edu.whut.sept.zuul.event.EventResult;
 import cn.edu.whut.sept.zuul.item.CraftResult;
@@ -36,6 +45,7 @@ import java.util.Map;
 public class RoomService {
 
     private static final String START_ROOM_ID = "fate_hall";
+    private static final String FATE_HALL_DIALOGUE = "dial_fate_hall_meeting";
     private static final int MAX_LOG_SIZE = 6;
     private static final Map<String, String> ROOM_EVENTS = Map.of(
             "memory_library", "library_clue_event",
@@ -79,10 +89,12 @@ public class RoomService {
     private final MiniGameService miniGameService;
     private final BattleService battleService;
     private final EndingService endingService;
+    private final DialogueEngine dialogueEngine;
     private final SaveManager saveManager;
     private final CustomChapterService customChapterService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, Room> rooms = createRooms();
+    private final Map<String, String> roomDialogues = new LinkedHashMap<>();
     private final List<String> logs = new ArrayList<>();
     private final LinkedHashSet<String> visitedRoomIds = new LinkedHashSet<>();
     private String currentRoomId = START_ROOM_ID;
@@ -92,7 +104,8 @@ public class RoomService {
     @Autowired
     public RoomService(PlayerService playerService, WorldState worldState, PuzzleEngine puzzleEngine,
                        EventEngine eventEngine, MiniGameService miniGameService, BattleService battleService,
-                       EndingService endingService, SaveManager saveManager, CustomChapterService customChapterService) {
+                       EndingService endingService, DialogueEngine dialogueEngine, SaveManager saveManager,
+                       CustomChapterService customChapterService) {
         this.playerService = playerService;
         this.worldState = worldState;
         this.puzzleEngine = puzzleEngine;
@@ -100,6 +113,7 @@ public class RoomService {
         this.miniGameService = miniGameService;
         this.battleService = battleService;
         this.endingService = endingService;
+        this.dialogueEngine = dialogueEngine;
         this.saveManager = saveManager;
         this.customChapterService = customChapterService;
     }
@@ -109,6 +123,7 @@ public class RoomService {
         this(playerService, worldState, puzzleEngine, eventEngine, miniGameService,
                 new BattleService(),
                 new EndingService(),
+                defaultDialogueEngine(),
                 new SaveManager(new cn.edu.whut.sept.zuul.save.SaveService()),
                 new CustomChapterService(new cn.edu.whut.sept.zuul.save.SaveService()));
     }
@@ -119,11 +134,15 @@ public class RoomService {
         this(playerService, worldState, puzzleEngine, eventEngine, miniGameService,
                 battleService,
                 endingService,
+                defaultDialogueEngine(),
                 new SaveManager(new cn.edu.whut.sept.zuul.save.SaveService()),
                 new CustomChapterService(new cn.edu.whut.sept.zuul.save.SaveService()));
     }
 
     public synchronized GameSnapshot initGame() {
+        rooms.clear();
+        rooms.putAll(createRooms());
+        roomDialogues.clear();
         currentRoomId = START_ROOM_ID;
         phase = GamePhase.EXPLORING;
         logs.clear();
@@ -134,11 +153,15 @@ public class RoomService {
         miniGameService.reset();
         battleService.reset();
         endingService.reset();
+        dialogueEngine.reset();
         creatorValidationErrors = List.of();
         return snapshot("新游戏已初始化。你在命运大厅醒来。", null);
     }
 
     public synchronized GameSnapshot menu() {
+        rooms.clear();
+        rooms.putAll(createRooms());
+        roomDialogues.clear();
         phase = GamePhase.MAIN_MENU;
         return snapshot("欢迎来到 World of Zuul: Uncertain Fate。", null);
     }
@@ -151,7 +174,6 @@ public class RoomService {
         if (request == null || request.actionType() == null || request.actionType().isBlank()) {
             return snapshot("动作未执行。", "缺少动作类型。");
         }
-
         String actionType = request.actionType().trim().toUpperCase(Locale.ROOT);
         if ("NEW_GAME".equals(actionType)) {
             return initGame();
@@ -164,6 +186,17 @@ public class RoomService {
         }
         if ("LOAD".equals(actionType)) {
             return load(request.target());
+        }
+        if (dialogueEngine.hasActiveSession()) {
+            if ("ADV_NEXT".equals(actionType)) {
+                phase = dialogueEngine.advance(playerService, worldState);
+                return snapshot("对话继续。", null);
+            }
+            if ("ADV_CHOOSE".equals(actionType)) {
+                phase = dialogueEngine.choose(request.target(), playerService, worldState);
+                return snapshot("抉择已记录。", null);
+            }
+            return snapshot("对话尚未结束。", "请先完成当前 ADV 对话。");
         }
         if ("CREATOR_LIST".equals(actionType)) {
             phase = GamePhase.CREATOR;
@@ -252,6 +285,9 @@ public class RoomService {
 
     public synchronized GameSnapshot load(String saveId) {
         try {
+            rooms.clear();
+            rooms.putAll(createRooms());
+            roomDialogues.clear();
             return saveManager.load(saveId, saveAccess())
                     .map(data -> snapshot("存档已读取：" + data.getSaveId(), null))
                     .orElseGet(() -> snapshot("读档未完成。", "存档不存在：" + saveManager.saveService().normalizeId(saveId)));
@@ -260,14 +296,10 @@ public class RoomService {
         }
     }
 
-    public Map<String, Room> rooms() {
-        return Map.copyOf(rooms);
-    }
-
     private GameSnapshot continueLatest() {
         return saveManager.saveService().latestSaveId()
                 .map(this::load)
-                .orElseGet(() -> snapshot("没有可继续的存档。", "请先开始新游戏。"));
+                .orElseGet(() -> snapshot("继续游戏未完成。", "没有可读取的存档。"));
     }
 
     private GameSnapshot validateCreatorPayload(Map<String, Object> payload) {
@@ -288,7 +320,55 @@ public class RoomService {
                     if (!creatorValidationErrors.isEmpty()) {
                         return snapshot("自定义章节无法试玩。", String.join("；", creatorValidationErrors));
                     }
-                    return snapshot("自定义章节试玩入口已就绪：" + chapter.path("title").asText(chapterId), null);
+                    
+                    rooms.clear();
+                    roomDialogues.clear();
+                    playerService.reset();
+                    worldState.reset();
+                    miniGameService.reset();
+                    battleService.reset();
+                    endingService.reset();
+                    dialogueEngine.reset();
+                    logs.clear();
+                    visitedRoomIds.clear();
+                    
+                    String startRoomId = chapter.path("startRoomId").asText();
+                    JsonNode roomsNode = chapter.get("rooms");
+                    if (roomsNode != null && roomsNode.isArray()) {
+                        for (JsonNode roomNode : roomsNode) {
+                            String rId = roomNode.path("roomId").asText();
+                            String rTitle = roomNode.path("name").asText(roomNode.path("title").asText("未命名房间"));
+                            String rDesc = roomNode.path("description").asText("这间房间没有描述。");
+                            String rInspect = roomNode.path("inspectText").asText(roomNode.path("inspect").asText(rDesc));
+                            String rAsset = roomNode.path("assetKey").asText("scene.fallback");
+                            
+                            Room room = new Room(rId, rTitle, rDesc, rInspect, rAsset);
+                            
+                            JsonNode exitsNode = roomNode.get("exits");
+                            if (exitsNode != null && exitsNode.isObject()) {
+                                exitsNode.fields().forEachRemaining(entry -> {
+                                    Direction.fromText(entry.getKey()).ifPresent(dir -> room.connect(dir, entry.getValue().asText()));
+                                });
+                            }
+                            rooms.put(rId, room);
+                            
+                            JsonNode dialNode = roomNode.get("dialogue");
+                            if (dialNode != null && dialNode.isObject()) {
+                                String groupId = dialNode.path("dialogueGroupId").asText();
+                                if (!groupId.isBlank()) {
+                                    roomDialogues.put(rId, groupId);
+                                    registerCustomDialogue(dialNode);
+                                }
+                            }
+                        }
+                    }
+                    
+                    currentRoomId = rooms.containsKey(startRoomId) ? startRoomId : START_ROOM_ID;
+                    visitedRoomIds.add(currentRoomId);
+                    phase = GamePhase.EXPLORING;
+                    checkAndStartRoomDialogue();
+                    
+                    return snapshot("自定义章节试玩已启动：" + chapter.path("title").asText(chapterId), null);
                 })
                 .orElseGet(() -> snapshot("自定义章节不存在。", "未找到章节：" + chapterId));
     }
@@ -312,7 +392,108 @@ public class RoomService {
         visitedRoomIds.add(targetRoomId);
         Room next = currentRoom();
         phase = GamePhase.EXPLORING;
+        checkAndStartRoomDialogue();
         return snapshot("你向" + direction.label() + "移动，抵达：" + next.title(), null);
+    }
+
+    private void checkAndStartRoomDialogue() {
+        String dialGroupId = roomDialogues.get(currentRoomId);
+        if (dialGroupId != null && dialogueEngine.canStart(dialGroupId, worldState)) {
+            dialogueEngine.start(dialGroupId, currentPhase());
+        }
+    }
+
+    private void registerCustomDialogue(JsonNode dialNode) {
+        if (dialNode == null || !dialNode.isObject()) return;
+        String groupId = dialNode.path("dialogueGroupId").asText();
+        String startNodeId = dialNode.path("startNodeId").asText();
+        if (groupId.isBlank() || startNodeId.isBlank()) return;
+
+        JsonNode nodesObj = dialNode.get("nodes");
+        if (nodesObj == null || !nodesObj.isObject()) return;
+
+        Map<String, DialogueNode> nodes = new LinkedHashMap<>();
+        nodesObj.fields().forEachRemaining(entry -> {
+            String nodeId = entry.getKey();
+            JsonNode node = entry.getValue();
+            
+            String type = node.path("type").asText("SPEECH");
+            String speakerSide = node.has("speakerSide") ? node.path("speakerSide").asText() : null;
+            String speakerName = node.has("speakerName") ? node.path("speakerName").asText() : null;
+            String expressionKey = node.has("expressionKey") ? node.path("expressionKey").asText() : null;
+            String text = node.has("text") ? node.path("text").asText() : null;
+            String audioSfx = node.has("audioSfx") ? node.path("audioSfx").asText() : null;
+            
+            DialogueCharacter left = parseCharacter(node.get("leftCharacter"));
+            DialogueCharacter right = parseCharacter(node.get("rightCharacter"));
+            
+            String eventType = node.has("eventType") ? node.path("eventType").asText() : null;
+            String eventPayload = node.has("eventPayload") ? node.path("eventPayload").asText() : null;
+            String dialogueLog = node.has("dialogueLog") ? node.path("dialogueLog").asText() : null;
+            String nextNodeId = node.has("nextNodeId") ? node.path("nextNodeId").asText() : null;
+            
+            List<DialogueChoice> choices = new ArrayList<>();
+            JsonNode choicesNode = node.get("choices");
+            if (choicesNode != null && choicesNode.isArray()) {
+                for (JsonNode choiceNode : choicesNode) {
+                    choices.add(parseChoice(choiceNode));
+                }
+            }
+            
+            nodes.put(nodeId, new DialogueNode(
+                nodeId, type, speakerSide, speakerName, expressionKey, text, audioSfx,
+                left, right, eventType, eventPayload, dialogueLog, nextNodeId, choices
+            ));
+        });
+
+        dialogueEngine.registerGraph(groupId, new DialogueGraph(groupId, startNodeId, nodes));
+    }
+
+    private DialogueCharacter parseCharacter(JsonNode charNode) {
+        if (charNode == null || !charNode.isObject()) return null;
+        String id = charNode.path("id").asText();
+        String expression = charNode.path("expression").asText("default");
+        return new DialogueCharacter(id, expression);
+    }
+
+    private DialogueChoice parseChoice(JsonNode choiceNode) {
+        if (choiceNode == null || !choiceNode.isObject()) return null;
+        String choiceId = choiceNode.path("choiceId").asText();
+        String text = choiceNode.path("text").asText();
+        String nextNodeId = choiceNode.path("nextNodeId").asText();
+        
+        List<DialogueCondition> conditions = new ArrayList<>();
+        JsonNode condNode = choiceNode.get("conditions");
+        if (condNode != null && condNode.isArray()) {
+            for (JsonNode cond : condNode) {
+                String type = cond.path("type").asText();
+                String itemKey = cond.has("itemKey") ? cond.path("itemKey").asText() : null;
+                String flagKey = cond.has("flagKey") ? cond.path("flagKey").asText() : null;
+                Boolean expected = cond.has("expected") ? cond.path("expected").asBoolean() : null;
+                Integer value = cond.has("value") ? cond.path("value").asInt() : null;
+                conditions.add(new DialogueCondition(type, itemKey, flagKey, expected, value));
+            }
+        }
+        
+        List<DialogueEffect> effects = new ArrayList<>();
+        JsonNode effNode = choiceNode.get("effects");
+        if (effNode != null && effNode.isArray()) {
+            for (JsonNode eff : effNode) {
+                String type = eff.path("type").asText();
+                String itemKey = eff.has("itemKey") ? eff.path("itemKey").asText() : null;
+                String flagKey = eff.has("flagKey") ? eff.path("flagKey").asText() : null;
+                Boolean booleanValue = eff.has("booleanValue") ? eff.path("booleanValue").asBoolean() : null;
+                Integer value = eff.has("value") ? eff.path("value").asInt() : null;
+                String eventPayload = eff.has("eventPayload") ? eff.path("eventPayload").asText() : null;
+                effects.add(new DialogueEffect(type, itemKey, flagKey, booleanValue, value, eventPayload));
+            }
+        }
+        
+        return new DialogueChoice(choiceId, text, conditions, effects, nextNodeId);
+    }
+
+    public Map<String, Room> rooms() {
+        return Map.copyOf(rooms);
     }
 
     private GameSnapshot look() {
@@ -322,6 +503,15 @@ public class RoomService {
 
     private GameSnapshot inspect() {
         Room room = currentRoom();
+        if ("fate_hall".equals(room.id()) && dialogueEngine.canStart(FATE_HALL_DIALOGUE, worldState)) {
+            dialogueEngine.start(FATE_HALL_DIALOGUE, currentPhase());
+            return snapshot("命运大厅的阴影中，有人拦住了你的去路。", null);
+        }
+        String dialGroupId = roomDialogues.get(room.id());
+        if (dialGroupId != null && dialogueEngine.canStart(dialGroupId, worldState)) {
+            dialogueEngine.start(dialGroupId, currentPhase());
+            return snapshot("调查线索，触发了场景对话。", null);
+        }
         String eventId = ROOM_EVENTS.get(room.id());
         if (eventId == null) {
             return snapshot("调查结果：" + room.inspectText(), null);
@@ -398,6 +588,7 @@ public class RoomService {
                 playerService.inventoryItems(),
                 snapshotPhase,
                 room.assetKey(),
+                dialogueEngine.view(playerService, worldState),
                 availableActions(room),
                 puzzleView(room),
                 worldState.flags(),
@@ -551,6 +742,15 @@ public class RoomService {
         }
         if (snapshotPhase == GamePhase.GAME_OVER) {
             actions.add(new GameActionOption("ACK_GAME_OVER", "确认失败", "", false));
+            return actions;
+        }
+        if (dialogueEngine.hasActiveSession()) {
+            GameSnapshot.DialogueView dialogue = dialogueEngine.view(playerService, worldState);
+            if (dialogue != null && "CHOICE".equalsIgnoreCase(dialogue.nodeType())) {
+                actions.add(new GameActionOption("ADV_CHOOSE", "选择回应", "", true));
+            } else {
+                actions.add(new GameActionOption("ADV_NEXT", "继续对话", "", false));
+            }
             return actions;
         }
         if (endingService.endingView() != null) {
@@ -724,7 +924,7 @@ public class RoomService {
 
             @Override
             public GamePhase phaseForSave() {
-                return currentPhase();
+                return dialogueEngine.hasActiveSession() ? dialogueEngine.suspendedPhase() : currentPhase();
             }
 
             @Override
@@ -739,7 +939,7 @@ public class RoomService {
 
             @Override
             public boolean saveBlocked() {
-                return miniGameService.hasActiveMiniGame() || miniGameService.hasPendingOutcome();
+                return miniGameService.hasActiveMiniGame() || miniGameService.hasPendingOutcome() || dialogueEngine.hasActiveSession();
             }
 
             @Override
@@ -777,6 +977,7 @@ public class RoomService {
                 miniGameService.reset();
                 battleService.restore(bossState);
                 endingService.reset();
+                dialogueEngine.reset();
                 creatorValidationErrors = List.of();
             }
 
@@ -795,6 +996,10 @@ public class RoomService {
                         : restoredPhase;
             }
         };
+    }
+
+    private static DialogueEngine defaultDialogueEngine() {
+        return new DialogueEngine(new DialogueConditionEvaluator(), new DialogueEffectExecutor());
     }
 
     private static Map<String, Room> createRooms() {

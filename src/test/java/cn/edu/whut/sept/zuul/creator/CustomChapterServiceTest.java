@@ -58,4 +58,92 @@ class CustomChapterServiceTest {
 
         assertFalse(errors.isEmpty());
     }
+
+    @Test
+    void validDialogueGraphShouldPassValidation() throws Exception {
+        CustomChapterService service = new CustomChapterService(tempDir, new SaveService(tempDir.resolve("saves")));
+
+        var errors = service.validate(objectMapper.readTree("""
+                {
+                  "chapterId": "sample",
+                  "title": "Sample",
+                  "startRoomId": "start",
+                  "rooms": [
+                    {
+                      "roomId": "start",
+                      "exits": {},
+                      "dialogue": {
+                        "dialogueGroupId": "dial_sample",
+                        "startNodeId": "node_01",
+                        "nodes": {
+                          "node_01": {
+                            "type": "SPEECH",
+                            "text": "hello",
+                            "nextNodeId": "node_choice"
+                          },
+                          "node_choice": {
+                            "type": "CHOICE",
+                            "choices": [
+                              {
+                                "choiceId": "ok",
+                                "text": "ok",
+                                "conditions": [
+                                  { "type": "HAS_ITEM", "itemKey": "nameless_badge" }
+                                ],
+                                "effects": [
+                                  { "type": "GAIN_HP", "value": 5 }
+                                ],
+                                "nextNodeId": "EXIT"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """));
+
+        assertTrue(errors.isEmpty());
+    }
+
+    @Test
+    void dialogueGraphShouldRejectOrphanAndBrokenChoiceEdges() throws Exception {
+        CustomChapterService service = new CustomChapterService(tempDir, new SaveService(tempDir.resolve("saves")));
+
+        var errors = service.validate(objectMapper.readTree("""
+                {
+                  "chapterId": "sample",
+                  "title": "Sample",
+                  "startRoomId": "start",
+                  "rooms": [
+                    {
+                      "roomId": "start",
+                      "exits": {},
+                      "dialogue": {
+                        "dialogueGroupId": "dial_sample",
+                        "startNodeId": "node_01",
+                        "nodes": {
+                          "node_01": {
+                            "type": "CHOICE",
+                            "choices": [
+                              { "choiceId": "bad", "text": "bad", "nextNodeId": "missing" }
+                            ]
+                          },
+                          "orphan": {
+                            "type": "SPEECH",
+                            "text": "lost",
+                            "nextNodeId": "EXIT"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """));
+
+        assertFalse(errors.isEmpty());
+        assertTrue(errors.stream().anyMatch(error -> error.contains("指向不存在节点")));
+        assertTrue(errors.stream().anyMatch(error -> error.contains("孤岛节点")));
+    }
 }

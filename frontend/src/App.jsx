@@ -16,6 +16,7 @@ const fallbackSnapshot = {
   inventoryItems: [],
   gamePhase: 'MAIN_MENU',
   roomAssetKey: 'fallback',
+  dialogue: null,
   availableActions: [],
   puzzle: null,
   miniGame: null,

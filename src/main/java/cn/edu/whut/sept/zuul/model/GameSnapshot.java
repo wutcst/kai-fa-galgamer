@@ -29,6 +29,9 @@ public record GameSnapshot(
         @Schema(description = "当前房间场景资源 key。", example = "scene.fate_hall")
         String roomAssetKey,
 
+        @Schema(description = "当前 ADV 对话视图。没有挂起对话时为 null。", nullable = true)
+        DialogueView dialogue,
+
         @ArraySchema(schema = @Schema(implementation = GameActionOption.class))
         List<GameActionOption> availableActions,
 
@@ -86,6 +89,7 @@ public record GameSnapshot(
                 inventoryItems,
                 gamePhase,
                 roomAssetKey,
+                dialogue,
                 availableActions,
                 puzzle,
                 flags,
@@ -103,6 +107,40 @@ public record GameSnapshot(
                 nextSystemMessage,
                 nextErrorMessage
         );
+    }
+
+    public record DialogueView(
+            boolean active,
+            String layout,
+            String dialogueGroupId,
+            String currentNodeId,
+            String nodeType,
+            String text,
+            String speakerSide,
+            String speakerName,
+            String audioSfx,
+            DialogueCharacterView leftCharacter,
+            DialogueCharacterView rightCharacter,
+            List<DialogueChoiceView> choices
+    ) {
+    }
+
+    public record DialogueCharacterView(
+            String id,
+            String assetKey,
+            String expressionKey,
+            boolean isSpeaking
+    ) {
+    }
+
+    public record DialogueChoiceView(
+            String choiceId,
+            String text,
+            boolean available,
+            double confidence,
+            String lockedReason,
+            String nextNodeId
+    ) {
     }
 
     public record PuzzleView(
