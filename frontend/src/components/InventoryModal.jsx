@@ -88,6 +88,7 @@ const ITEM_DETAILS = {
 }
 
 function InventoryModal({ inventoryItems = [], assets, loading, onAction, onClose }) {
+  const craftPreview = assets['ui.craft_recipe_preview']
   const items = useMemo(
     () =>
       inventoryItems.map((itemId) => ({
@@ -166,7 +167,10 @@ function InventoryModal({ inventoryItems = [], assets, loading, onAction, onClos
           </article>
         </div>
 
-        <footer className="inventory-footer">
+        <footer
+          className="inventory-footer"
+          style={craftPreview ? { '--craft-recipe-preview': `url("${craftPreview}")` } : undefined}
+        >
           <p>Alchemy</p>
           <button className="craft-button" type="button" disabled={loading} onClick={handleCraft}>
             合成灵魂之铃

@@ -75,6 +75,8 @@
   background:
     radial-gradient(circle at 50% 45%, rgba(147, 222, 218, 0.08), transparent 34rem),
     linear-gradient(135deg, rgba(17, 20, 29, 0.94), rgba(7, 10, 16, 0.98));
+  background-position: center;
+  background-size: cover;
   border: 1px solid rgba(204, 170, 96, 0.36);
   border-radius: 8px;
 }
@@ -270,7 +272,17 @@
 .hp-panel {
   display: flex;
   gap: 10px;
-  align-items: baseline;
+  align-items: center;
+}
+
+.hp-panel img {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border: 1px solid rgba(147, 222, 218, 0.54);
+  border-radius: 50%;
+  box-shadow: 0 0 16px rgba(147, 222, 218, 0.22);
 }
 
 .hp-panel strong {
@@ -286,6 +298,15 @@
   min-width: 92px;
   cursor: pointer;
   color: #f4ecd5;
+  border-radius: 6px;
+}
+
+.inventory-hud-button img {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border: 1px solid rgba(245, 216, 144, 0.35);
   border-radius: 6px;
 }
 
@@ -840,6 +861,23 @@
   padding: clamp(20px, 3vw, 30px);
 }
 
+.battle-panel.effect-attack .battle-copy::before,
+.battle-panel.effect-roll .battle-copy::before,
+.battle-panel.effect-bell .battle-copy::before {
+  position: absolute;
+  inset: 18px auto auto 18px;
+  width: 132px;
+  height: 132px;
+  background-image: var(--battle-impact-vfx);
+  background-position: center;
+  background-size: contain;
+  content: "";
+  opacity: 0.82;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  animation: battle-pulse 520ms ease-out both;
+}
+
 .player-health-strip {
   position: absolute;
   top: 14px;
@@ -1141,6 +1179,20 @@
   transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
+.direction-button {
+  display: grid;
+  grid-template-rows: 24px auto auto;
+  place-items: center;
+  padding: 7px 6px;
+}
+
+.direction-button img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px rgba(147, 222, 218, 0.3));
+}
+
 .direction-button:hover,
 .action-button:hover {
   transform: translateY(-1px);
@@ -1216,7 +1268,17 @@
 }
 
 .log-panel h2 {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
   margin: 0 0 8px;
+}
+
+.log-panel h2 img {
+  width: 10px;
+  height: 10px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px rgba(255, 54, 76, 0.48));
 }
 
 .log-panel ul {

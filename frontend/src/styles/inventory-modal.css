@@ -174,8 +174,27 @@
 }
 
 .inventory-footer {
+  position: relative;
+  overflow: hidden;
   border-top: 1px solid rgba(204, 170, 96, 0.34);
   border-bottom: 0;
+}
+
+.inventory-footer::before {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: min(360px, 52%);
+  background-image: var(--craft-recipe-preview, none);
+  background-position: center;
+  background-size: cover;
+  content: "";
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.inventory-footer > * {
+  position: relative;
+  z-index: 1;
 }
 
 .craft-button {

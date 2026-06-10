@@ -11,6 +11,9 @@ import PuzzleModal from './PuzzleModal'
 function GameScreen({ snapshot, assets, loading, onAction, onOpenSave }) {
   const [inventoryOpen, setInventoryOpen] = useState(false)
   const sceneUrl = assets[snapshot.roomAssetKey] ?? assets.fallback
+  const playerAvatar = assets['ui.player_avatar']
+  const backpackIcon = assets['ui.backpack_icon']
+  const newLogDot = assets['ui.new_log_red_dot']
   const puzzle = normalizePuzzle(snapshot)
   const actions = snapshot.availableActions ?? []
   const utilityActions = actions.filter(
@@ -25,7 +28,7 @@ function GameScreen({ snapshot, assets, loading, onAction, onOpenSave }) {
     <main className="game-screen">
       <div className="scene-image" style={{ backgroundImage: `url("${sceneUrl}")` }} />
       <div className="scene-vignette" />
-      <ExplorationMap map={snapshot.map} />
+      <ExplorationMap map={snapshot.map} assets={assets} />
 
       <header className="top-hud">
         <div className="brand-mark">
@@ -33,12 +36,14 @@ function GameScreen({ snapshot, assets, loading, onAction, onOpenSave }) {
           <span>Uncertain Fate</span>
         </div>
         <div className="hp-panel">
+          {playerAvatar ? <img src={playerAvatar} alt="" /> : null}
           <span>HP</span>
           <strong>{snapshot.playerHp}</strong>
         </div>
         <div className="phase-panel">{snapshot.gamePhase}</div>
         <button className="inventory-hud-button" type="button" onClick={() => setInventoryOpen(true)}>
-          背包
+          {backpackIcon ? <img src={backpackIcon} alt="" /> : null}
+          <span>背包</span>
           <strong>{snapshot.inventoryItems?.length ?? 0}</strong>
         </button>
       </header>
@@ -75,7 +80,7 @@ function GameScreen({ snapshot, assets, loading, onAction, onOpenSave }) {
         ) : null}
 
         <aside className="control-panel">
-          <DirectionButtons actions={actions} onAction={onAction} disabled={loading} />
+          <DirectionButtons actions={actions} assets={assets} onAction={onAction} disabled={loading} />
 
           <div className="action-row">
             {utilityActions.map((action) => (
@@ -102,7 +107,10 @@ function GameScreen({ snapshot, assets, loading, onAction, onOpenSave }) {
       </section>
 
       <aside className="log-panel">
-        <h2>探索日志</h2>
+        <h2>
+          <span>探索日志</span>
+          {newLogDot && snapshot.logs?.length ? <img src={newLogDot} alt="" /> : null}
+        </h2>
         <ul>
           {snapshot.logs?.slice(-5).map((log, index) => (
             <li key={`${index}-${log}`}>{log}</li>

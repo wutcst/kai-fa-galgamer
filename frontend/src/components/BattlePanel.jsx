@@ -31,6 +31,7 @@ function BattlePanel({ battle, assets, loading, playerHp, onAction }) {
   const bossArt = assets[battle.assetKey ?? 'character.zuul_overlord'] ?? assets.fallback
   const intentIcon = assets[battle.intentAssetKey] ?? assets['battle.intent.heavy'] ?? assets.fallback
   const diceArt = assets['battle.d100.die'] ?? assets.fallback
+  const impactVfx = assets['ui.battle_impact_vfx']
   const effect = battle.lastAction === 'use_soul_bell' ? 'bell' : battle.lastAction
   const [rolling, setRolling] = useState(false)
   const [displayRoll, setDisplayRoll] = useState(battle.d100Result || 0)
@@ -71,6 +72,7 @@ function BattlePanel({ battle, assets, loading, playerHp, onAction }) {
     <section
       key={`${battle.turn}-${battle.enemyHp}-${battle.phase}-${battle.lastAction}`}
       className={`battle-panel phase-${phase} ${effect ? `effect-${effect}` : ''}`}
+      style={impactVfx ? { '--battle-impact-vfx': `url("${impactVfx}")` } : undefined}
     >
       <div className="player-health-strip" aria-label="Player health">
         <span>你的生命</span>

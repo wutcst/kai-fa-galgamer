@@ -116,7 +116,12 @@ function App() {
         />
       )}
       {saveOpen ? <SaveModal snapshot={snapshot} loading={loading} onAction={handleAction} onClose={() => setSaveOpen(false)} /> : null}
-      {loading ? <div className="loading-mask">命运骰正在转动...</div> : null}
+      {loading ? (
+        <div className="loading-mask">
+          {assets['ui.loading_spinner'] ? <img src={assets['ui.loading_spinner']} alt="" /> : null}
+          <span>命运骰正在转动...</span>
+        </div>
+      ) : null}
       {error ? <div className="global-error">{error}</div> : null}
     </>
   )
